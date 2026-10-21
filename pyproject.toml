@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentbox"
+version = "0.1.0"
+description = "Self-tuning ephemeral Docker sandboxes for AI agents"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "docker>=7.1",
+  "psutil>=5.9",
+  "nvidia-ml-py>=12.535",
+  "typer>=0.12",
+  "rich>=13.7",
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "mcp>=2.3,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+agentbox = "agentbox.cli:app"
+agentbox-mcp = "agentbox.mcp_server:main"
+
+[tool.setuptools.packages.find]
+include = ["agentbox*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["docker: needs a running Docker engine", "gpu: needs Docker GPU support"]

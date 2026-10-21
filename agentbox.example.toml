@@ -1,0 +1,23 @@
+# Copy this file to agentbox.toml and change what you need. Every setting is optional.
+
+# Host reserve: agentbox leaves max(min, fraction) of the machine for you.
+# reserve_cpu_min = 2.0
+# reserve_cpu_frac = 0.10
+# reserve_mem_min_gb = 3.0
+# reserve_mem_frac = 0.15
+
+# CPU may be oversubscribed (agents idle a lot); memory never is.
+# cpu_overcommit = 1.5
+# max_concurrency = 10
+
+# Containers
+# image = "agentbox/sandbox:latest"
+# gpu_image = "agentbox/sandbox-gpu:latest"
+# network = "none"              # default network for tasks
+# allow_network = false         # may MCP clients request "bridge" (internet)?
+# default_timeout = 600         # seconds
+# workspace_mb = 1024           # /workspace size (counts against task memory)
+
+# Where outputs and state are kept
+# runs_dir = "runs"
+# state_dir = ".agentbox"

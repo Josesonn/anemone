@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# agentbox runtime state and task outputs
+.agentbox/
+runs/
+agentbox.toml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# build output and local tool settings
+build/
+dist/
+.claude/
