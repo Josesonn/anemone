@@ -226,6 +226,15 @@ def status(once: bool = typer.Option(False, help="print once instead of refreshi
 
 
 @app.command()
+def ui(port: int = typer.Option(7400, help="port to serve on (the next free one is used if taken)"),
+       home: Path = typer.Option(None, help="agentbox folder to watch (default: current folder)"),
+       no_browser: bool = typer.Option(False, "--no-browser", help="don't open a browser tab")):
+    """Open the live monitor in your browser (this computer only)."""
+    from .ui.server import serve
+    serve(home=home, port=port, open_browser=not no_browser)
+
+
+@app.command()
 def gc(everything: bool = typer.Option(False, "--all", help="also remove containers owned by live processes")):
     """Remove leftover agentbox containers (dead owner or expired)."""
     n = janitor.sweep(_client(), everything=everything)

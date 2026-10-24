@@ -30,6 +30,9 @@ agentbox-mcp = "agentbox.mcp_server:main"
 [tool.setuptools.packages.find]
 include = ["agentbox*"]
 
+[tool.setuptools.package-data]
+agentbox = ["ui/static/*", "ui/static/**/*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 markers = ["docker: needs a running Docker engine", "gpu: needs Docker GPU support"]

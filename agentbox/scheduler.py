@@ -5,8 +5,10 @@ import asyncio
 import heapq
 import itertools
 import json
+import os
 import statistics
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 from . import janitor
@@ -43,6 +45,8 @@ class AgentBox:
         self._oom_flag = False
         self._bg: list[asyncio.Task] = []
         self._images: set[str] = set()
+        self._events: deque[dict] = deque(maxlen=60)
+        self._status_written = 0.0
         self.completed = 0
         self.failed = 0
 
@@ -118,9 +122,13 @@ class AgentBox:
             "limit": self.tuner.limit, "ceiling": self.ceiling, "reason": self.tuner.last_reason,
             "used": {"cpus": round(self._used.cpus, 2), "mem_gb": round(self._used.mem_gb, 2)},
             "queued": len(self._heap), "pool": self.pool.size(), "completed": self.completed, "failed": self.failed,
+            "tune_interval": self.cfg.tune_interval, "events": list(self._events),
             "running": [{"id": r.task.id, "kind": r.task.kind, "cpus": round(r.cpus_now or r.req.cpus, 2), "mem_gb": r.req.mem_gb,
                          "cpu_now": round(r.sampler.cpu_now, 2) if r.sampler else 0, "mem_now_gb": round(r.sampler.mem_now_gb, 2) if r.sampler else 0,
-                         "gpus": r.gpu_ids, "elapsed": round(time.time() - r.started, 1)} for r in self._running.values()],
+                         "gpus": r.gpu_ids, "elapsed": round(time.time() - r.started, 1),
+                         "container": getattr(r.container, "id", None), "image": r.task.image or (self.cfg.gpu_image if r.gpu_ids else self.cfg.image),
+                         "network": r.task.network or self.cfg.network, "timeout": r.task.timeout or self.cfg.default_timeout,
+                         "started": r.started} for r in self._running.values()],
         }
 
     # ---------- sizing ----------
@@ -210,6 +218,7 @@ class AgentBox:
                 continue
             self._used = Resources(self._used.cpus + req.cpus, self._used.mem_gb + req.mem_gb)
             self._running[task.id] = _Run(task, req, gpu_ids, cpus_now=req.cpus)
+            self._event("start", task, cpus=req.cpus, mem_gb=req.mem_gb, gpus=gpu_ids)
             asyncio.create_task(self._execute(task, req, gpu_ids, fut))
         for item in waiting:
             heapq.heappush(self._heap, item)
@@ -233,6 +242,9 @@ class AgentBox:
             self.completed += 1
         else:
             self.failed += 1
+        status = "ok" if res.ok else "stopped" if res.stopped else "timed_out" if res.timed_out else "out_of_memory" if res.oom else "error" if res.error else "failed"
+        self._event("finish", task, status=status, exit_code=res.exit_code, duration=round(res.duration, 2),
+                    cpu_peak=round(res.cpu_peak, 2), mem_peak_gb=round(res.mem_peak_gb, 3))
         if not fut.done():
             fut.set_result(res)
 
@@ -314,8 +326,19 @@ class AgentBox:
                 pass
             await asyncio.sleep(1.0)
 
+    def _event(self, kind: str, task: Task, **data) -> None:
+        """Record a task start/finish for monitors and publish it right away (at most every 0.2 s)."""
+        self._events.append({"type": kind, "id": task.id, "kind": task.kind, "ts": time.time(), **data})
+        if time.time() - self._status_written > 0.2:
+            self._write_status()
+
     def _write_status(self) -> None:
+        """Write status.json atomically, so a monitor never reads a half-written file."""
         try:
-            (self.cfg.state_path / "status.json").write_text(json.dumps(self.status()))
+            path = self.cfg.state_path / "status.json"
+            tmp = path.with_suffix(f".{os.getpid()}.tmp")
+            tmp.write_text(json.dumps(self.status()))
+            os.replace(tmp, path)
+            self._status_written = time.time()
         except Exception:
             pass

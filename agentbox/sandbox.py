@@ -67,6 +67,7 @@ class Result(BaseModel):
     output: str = ""
     oom: bool = False
     timed_out: bool = False
+    stopped: bool = False  # killed from outside agentbox, e.g. Stop in the monitor
     duration: float = 0.0
     cpus: float = 0.0
     mem_gb: float = 0.0
@@ -78,7 +79,7 @@ class Result(BaseModel):
 
     @property
     def ok(self) -> bool:
-        return self.exit_code == 0 and not self.oom and not self.timed_out and self.error is None
+        return self.exit_code == 0 and not self.oom and not self.timed_out and not self.stopped and self.error is None
 
 
 def _limits(res: Resources) -> dict:
@@ -241,9 +242,14 @@ def run_in(client, container, task: Task, res: Resources, cfg: Config, gpu_ids: 
                 pass
             t.join(5)
         else:
-            r.exit_code = api.exec_inspect(eid)["ExitCode"]
-            r.oom = oom_killed(client, container, cfg)
-            r.artifacts = collect_artifacts(client, container, Path(cfg.runs_dir) / task.id, cfg)
+            container.reload()
+            if container.status not in ("running", "paused"):
+                r.stopped = True  # the container was killed from outside while the command ran
+                r.oom = bool(container.attrs["State"].get("OOMKilled"))
+            else:
+                r.exit_code = api.exec_inspect(eid)["ExitCode"]
+                r.oom = oom_killed(client, container, cfg)
+                r.artifacts = collect_artifacts(client, container, Path(cfg.runs_dir) / task.id, cfg)
         r.output = b"".join(chunks).decode(errors="replace")
     except Exception as e:  # docker errors, container died mid-run
         r.error = f"{type(e).__name__}: {e}"

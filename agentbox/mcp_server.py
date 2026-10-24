@@ -113,7 +113,7 @@ def _summary(r: Result) -> dict[str, Any]:
     if r.artifacts:
         root = Path(r.artifacts)
         files = [{"path": p.relative_to(root).as_posix(), "bytes": p.stat().st_size} for p in sorted(root.rglob("*")) if p.is_file()]
-    status = "ok" if r.ok else "timed_out" if r.timed_out else "out_of_memory" if r.oom else "error" if r.error else "failed"
+    status = "ok" if r.ok else "stopped" if r.stopped else "timed_out" if r.timed_out else "out_of_memory" if r.oom else "error" if r.error else "failed"
     return {
         "task_id": r.id, "status": status, "exit_code": r.exit_code, "output": out, "output_truncated": truncated,
         "error": r.error, "duration_s": round(r.duration, 2),
@@ -132,7 +132,7 @@ async def run_task(cmd: str, files: dict[str, str] | None = None, size: Literal[
 
     The container has a read-only root filesystem, no network by default, runs as a non-root user and is
     destroyed when the command ends. Write files to /workspace/out to keep them (see read_artifact).
-    Status is one of: ok, failed (non-zero exit), timed_out, out_of_memory, error.
+    Status is one of: ok, failed (non-zero exit), timed_out, out_of_memory, stopped (killed from the monitor), error.
     """
     box = await _get_box()
     spec = TaskSpec(cmd=cmd, files=files or {}, size=size, cpus=cpus, mem_gb=mem_gb, gpu_count=gpu_count,

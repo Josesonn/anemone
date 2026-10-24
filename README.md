@@ -56,6 +56,7 @@ agentbox run --gpu 1 --vram 4 -- nvidia-smi        # attach a GPU
 agentbox run --file solve.py -- python solve.py    # copy a local file in
 agentbox batch examples/stress.yaml                # many tasks, live dashboard
 agentbox status                                    # watch a running agentbox
+agentbox ui                                        # live ASCII-ocean monitor in your browser
 agentbox gc                                        # remove leftover containers
 ```
 
@@ -97,6 +98,37 @@ On Windows the program is `.venv\Scripts\agentbox-mcp.exe`. Then start a new ses
 
 If Docker isn't running, the server still starts. Its tools tell the AI to start Docker Desktop, and they work once Docker is up.
 
+## Monitoring UI
+
+```bash
+agentbox ui            # watch the agentbox running in this folder
+```
+
+This opens a live dashboard at `http://127.0.0.1:7400` that only your computer can reach. The background is an animated ASCII ocean, built on [ascii-sharks](https://github.com/stackedlol/ascii-sharks):
+
+- **Each running task is a creature.** Its size follows the share of the machine it has, and it swims and hunts harder when its CPU is busy. Every task *kind* always gets the same species.
+- **Queued tasks are glowing prey.**
+- **When a task ends,** its creature swims off in a burst: green for ok, red for failed, orange for a timeout, purple for out of memory.
+- **Hover over a shark** to see that task's CPU, memory and running time.
+- **Search the running tasks** by kind, ID or image, and **click one** to open its panel: live CPU and memory against the container's limits, a minute of history, the container's image, ID, processes, network and disk I/O and sandbox settings, plus **Pause/Resume** and **Hold to stop**. Stopped tasks end with the status `stopped`. Only the monitor page can use these controls; other websites can't.
+- **Hide panels** (button at the top, or press **H**) slides the windows away so you can just watch the sharks.
+- **The side panel** shows running, queued, finished and failed counts, live CPU and memory gauges with a minute of history, what the running tasks have reserved, the running tasks, and an activity timeline. A notification pops up when a task fails.
+
+The monitor is read-only. It reads what agentbox publishes in `.agentbox/` and never starts, stops or reads the output of tasks.
+
+The panel is built from [Arc](https://uiarc.dev) components (MIT). The monitor always animates, even if your system asks apps to reduce motion.
+
+**Different creatures.** The sharks' look lives in one file, `agentbox/ui/static/themes/sharks.js`. To swap them for something else, see [docs/themes.md](docs/themes.md).
+
+**Changing the panel.** The panel source is in `frontend/` (React, Vite and Arc). Rebuilding it needs [Node.js](https://nodejs.org); using agentbox doesn't.
+
+```bash
+cd frontend
+npm install
+npm run dev     # live-reloading panel; run `agentbox ui --no-browser` alongside it
+npm run build   # writes the built panel into agentbox/ui/static/app
+```
+
 ## Configuration
 
 Everything works without configuration. To change defaults, copy `agentbox.example.toml` to `agentbox.toml` and edit it. For example:
@@ -130,4 +162,4 @@ Docker containers are a strong barrier, not an absolute one. agentbox is built f
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The monitor panel uses [Arc](https://uiarc.dev) components by Elia Kuratli (MIT); their license is in `frontend/src/components/arc/LICENSE`. The monitor's ocean is adapted from [ascii-sharks](https://github.com/stackedlol/ascii-sharks) by drewdi (MIT); its license is in `agentbox/ui/static/ocean/LICENSE`.

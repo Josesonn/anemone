@@ -1,0 +1,172 @@
+/* Layout for the agentbox monitor: the ASCII ocean fills the screen and Arc's cards float over it as
+   glass windows. Every visible component is from Arc (src/components/arc); this file only places them
+   and keeps them on one rhythm: one radius, one padding, one glass surface, Arc tokens throughout. */
+
+:root {
+  --card-radius: var(--radius-panel);
+  --card-pad: 14px;
+  --gap: 10px;
+  --edge: 14px;
+  --column: 336px;
+  --glass: color-mix(in oklab, var(--surface) 72%, transparent);
+  --glass-border: color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: #000;
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.app { position: relative; height: 100vh; }
+
+/* ── the ocean, full screen ─────────────────────────────────────────── */
+
+.ocean { position: fixed; inset: 0; }
+.ocean-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; font-family: "Geist Mono Variable", ui-monospace, monospace; }
+
+/* An invisible target that follows the pointer over a shark, so Arc's HoverCard has something to anchor to. */
+.ocean-probe { position: absolute; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: help; }
+
+.ocean-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-8); pointer-events: none; }
+.ocean-empty > * { max-width: 420px; }
+
+/* ── glass windows ──────────────────────────────────────────────────── */
+
+/* Arc's Card and MetricCard, turned into frosted windows over the water. */
+.windows > article,
+.metric-grid > article,
+.ocean-empty > * {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: var(--shadow-floating), inset 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
+/* Compact: Arc sizes everything from these tokens, so scaling them here shrinks every component in proportion. */
+.windows, .toolbar {
+  --text-3xl: 1.5rem;
+  --text-2xl: 1.25rem;
+  --text-xl: 1.0625rem;
+  --text-lg: .9375rem;
+  --text-base: .875rem;
+  --text-sm: .8125rem;
+  --text-xs: .71875rem;
+  --space-2: .375rem;
+  --space-3: .5rem;
+  --space-4: .75rem;
+  --space-5: .875rem;
+  --space-6: 1rem;
+  --space-8: 1.25rem;
+  --radius-panel: 18px;
+  --radius-control: 12px;
+  --control-height-sm: 1.875rem;
+  --control-height-md: 2.25rem;
+  font-size: var(--text-sm);
+}
+
+.windows {
+  position: fixed;
+  top: var(--edge);
+  bottom: var(--edge);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: var(--column);
+  overflow: visible;
+  transition: transform var(--duration-considered) var(--ease-enter), opacity var(--duration-standard) var(--ease-standard);
+  /* The column itself lets clicks through to the ocean; only the windows catch them. */
+  pointer-events: none;
+}
+.windows > * { pointer-events: auto; flex: none; }
+.windows.left { left: var(--edge); }
+
+/* Hide panels: the columns slide off their edges so only the ocean is left. */
+.panels-hidden .windows { opacity: 0; pointer-events: none; }
+.panels-hidden .windows > * { pointer-events: none; }
+.panels-hidden .windows.left { transform: translateX(calc(-100% - 2 * var(--edge))); }
+.panels-hidden .windows.right { transform: translateX(calc(100% + 2 * var(--edge))); }
+
+/* The last window in a column takes what height is left and fades out at the bottom rather than scrolling. */
+.windows > article.fill { flex: 1 1 auto; min-height: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); }
+.windows.right { right: var(--edge); }
+
+.toolbar {
+  position: fixed;
+  top: var(--edge);
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transform: translateX(-50%);
+}
+
+/* MetricCard: match Arc's Card so every window has the same shape. */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+.metric-grid > article { padding: var(--card-pad); }
+.metric-grid > article > div:first-child { margin-bottom: 6px; }
+.metric-grid > article > p { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.card-body { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-4); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
+.rule { height: 1px; background: var(--glass-border); }
+.quiet { margin: 0; color: var(--text-muted); }
+
+/* The table runs edge to edge inside its window instead of drawing a second box. */
+.card-body.flush { margin: var(--space-3) calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)); }
+/* Tighter table rows than Arc's default 52px. */
+.card-body.flush td { height: 40px; }
+.card-body.flush th { height: 34px; }
+.card-body.flush > div { border: 0; border-top: 1px solid var(--glass-border); border-radius: 0; background: transparent; }
+.card-body.flush table { min-width: 0; }
+
+.card-body.search { margin-top: var(--space-3); }
+
+/* Task panel (Arc Drawer): compact like the windows, with a quiet facts list. */
+.task-drawer {
+  --text-3xl: 1.5rem; --text-lg: .9375rem; --text-sm: .8125rem; --text-xs: .71875rem;
+  --space-4: .75rem; --space-5: .875rem; --radius-panel: 18px;
+}
+.drawer-body { display: flex; flex-direction: column; gap: var(--space-5); }
+.drawer-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; padding: var(--space-4) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.facts > div { min-width: 0; }
+.facts > div.wide { grid-column: 1 / -1; }
+.facts dt { color: var(--text-muted); font-size: var(--text-xs); }
+.facts dd { margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.facts dd.with-copy { display: flex; align-items: center; gap: 4px; font-family: "Geist Mono Variable", monospace; font-size: 12px; }
+.drawer-actions { display: flex; gap: var(--space-3); align-items: center; }
+.drawer-actions > * { flex: 1; }
+.small { font-size: var(--text-xs); line-height: 1.45; }
+
+.cell-task { display: flex; align-items: baseline; gap: 6px; min-width: 0; line-height: 1.3; white-space: nowrap; }
+.cell-task > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-task small { color: var(--text-muted); font-family: "Geist Mono Variable", monospace; font-size: 11px; }
+
+/* Narrower screens: one column of windows on the right, ocean on the left. */
+@media (max-width: 1180px) {
+  .windows.left, .windows.right { position: static; width: auto; overflow: visible; }
+  .app { display: flex; flex-direction: column; align-items: flex-end; gap: var(--gap); height: auto; min-height: 100vh; padding: calc(58px + 2 * var(--edge)) var(--edge) var(--edge); }
+  body { overflow-y: auto; }
+  .windows { width: min(var(--column), 100%); }
+}
+
+@media (max-width: 560px) {
+  :root { --edge: var(--space-2); }
+  .app { align-items: stretch; }
+  .windows { width: 100%; }
+  .metric-grid, .pair { grid-template-columns: 1fr; }
+}

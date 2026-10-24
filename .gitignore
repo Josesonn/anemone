@@ -20,3 +20,6 @@ Thumbs.db
 build/
 dist/
 .claude/
+
+# monitor frontend (built output lives in agentbox/ui/static/app)
+node_modules/
