@@ -5,13 +5,13 @@ import type { AtRule } from "postcss";
 
 // The monitor always animates (see src/force-motion.ts), so Arc's "reduce motion" CSS rules are dropped.
 const alwaysAnimate = {
-  postcssPlugin: "agentbox-always-animate",
+  postcssPlugin: "anemone-always-animate",
   AtRule: { media(rule: AtRule) { if (/prefers-reduced-motion:\s*reduce/.test(rule.params)) rule.remove(); } },
 };
 
 // The built app goes straight into the Python package, next to the hand-written ocean
-// engine and themes (agentbox/ui/static/ocean, /themes), which the build leaves alone.
-const STATIC = path.resolve(__dirname, "../agentbox/ui/static");
+// engine and themes (anemone/ui/static/ocean, /themes), which the build leaves alone.
+const STATIC = path.resolve(__dirname, "../anemone/ui/static");
 
 export default defineConfig({
   plugins: [react()],
@@ -26,7 +26,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 900,
   },
   server: {
-    // `npm run dev` + `agentbox ui --demo --no-browser` gives hot reload against live data.
+    // `npm run dev` + `anemone ui --demo --no-browser` gives hot reload against live data.
     proxy: {
       "/api": "http://127.0.0.1:7400",
       "/static/ocean": "http://127.0.0.1:7400",

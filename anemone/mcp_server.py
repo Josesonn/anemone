@@ -1,8 +1,8 @@
-"""MCP server exposing agentbox to AI clients (Claude Code, Claude Desktop, ...).
+"""MCP server exposing anemone to AI clients (Claude Code, Claude Desktop, ...).
 
 Runs over stdio. stdout belongs to the MCP protocol, so nothing in here may print; logs go to stderr.
 
-    agentbox-mcp --home C:\\path\\to\\agentbox
+    anemone-mcp --home C:\\path\\to\\anemone
 """
 from __future__ import annotations
 
@@ -24,29 +24,29 @@ from . import janitor
 from .config import Config
 from .gpu import GPURequest
 from .sandbox import Result, Task
-from .scheduler import AgentBox
+from .scheduler import Anemone
 
-log = logging.getLogger("agentbox.mcp")
+log = logging.getLogger("anemone.mcp")
 MAX_OUTPUT_CHARS = 20_000
 MAX_ARTIFACT_BYTES = 200_000
 
-_box: AgentBox | None = None
+_box: Anemone | None = None
 _lock: asyncio.Lock | None = None
 
 
-async def _get_box() -> AgentBox:
-    """Start agentbox on first use, and retry on later calls if Docker was not running yet."""
+async def _get_box() -> Anemone:
+    """Start anemone on first use, and retry on later calls if Docker was not running yet."""
     global _box, _lock
     _lock = _lock or asyncio.Lock()
     async with _lock:
         if _box is None:
-            box = AgentBox(Config.load())
+            box = Anemone(Config.load())
             try:
                 await box.start()
             except Exception as e:
-                raise ToolError(f"agentbox cannot start: {_explain(e)}") from e
+                raise ToolError(f"anemone cannot start: {_explain(e)}") from e
             _box = box
-            log.info("agentbox ready: limit %s, budget %s", box.tuner.limit, box.budget)
+            log.info("anemone ready: limit %s, budget %s", box.tuner.limit, box.budget)
         return _box
 
 
@@ -72,7 +72,7 @@ async def _lifespan(_server: MCPServer):
 
 
 server = MCPServer(
-    name="agentbox",
+    name="anemone",
     instructions=(
         "Runs commands in disposable, locked-down Docker containers sized to this machine's hardware. "
         "Each run gets a fresh container that is destroyed afterwards; nothing persists between runs except "
@@ -94,12 +94,12 @@ class TaskSpec(BaseModel):
     network: Literal["none", "bridge"] = Field("none", description="'bridge' gives internet access; only allowed if the operator enabled it.")
     timeout: float | None = Field(None, description="Seconds before the run is killed (default 600).")
     browser: bool = Field(False, description="Use the browser image: headless Chromium with Python Playwright, plus Node.js, jq, wget, zip and sqlite3. Gets at least 1.5 GB of memory. Pair with network='bridge' to open real websites.")
-    image: str | None = Field(None, description="Docker image; defaults to agentbox/sandbox (Python 3.12, git, curl, build tools), or the browser image when browser is true.")
+    image: str | None = Field(None, description="Docker image; defaults to anemone/sandbox (Python 3.12, git, curl, build tools), or the browser image when browser is true.")
     kind: str = Field("mcp", description="Label grouping similar runs, used to learn how much CPU/memory they need.")
 
     def to_task(self, allow_network: bool) -> Task:
         if self.network == "bridge" and not allow_network:
-            raise ToolError("network access is disabled; set allow_network = true in agentbox.toml to enable it")
+            raise ToolError("network access is disabled; set allow_network = true in anemone.toml to enable it")
         return Task(cmd=self.cmd, files=self.files, size=self.size, cpus=self.cpus, mem_gb=self.mem_gb,
                     gpu=GPURequest(count=self.gpu_count, vram_gb=self.vram_gb) if self.gpu_count else None,
                     network=self.network, timeout=self.timeout, image=self.image, browser=self.browser, kind=self.kind)
@@ -147,7 +147,7 @@ async def run_task(cmd: str, files: dict[str, str] | None = None, size: Literal[
 async def run_batch(tasks: list[TaskSpec]) -> dict[str, Any]:
     """Run several independent commands at once, each in its own container.
 
-    agentbox decides how many run at the same time based on free CPU and memory; the rest queue.
+    anemone decides how many run at the same time based on free CPU and memory; the rest queue.
     Returns one result per task, in the same order as given.
     """
     box = await _get_box()
@@ -160,12 +160,12 @@ async def run_batch(tasks: list[TaskSpec]) -> dict[str, Any]:
 
 @server.tool(structured_output=True, annotations=ToolAnnotations(title="Sandbox capacity and activity", readOnlyHint=True, openWorldHint=False))
 async def get_status() -> dict[str, Any]:
-    """Show the machine's capacity and what agentbox is doing: hardware, resource budget, size presets,
+    """Show the machine's capacity and what anemone is doing: hardware, resource budget, size presets,
     how many tasks may run at once and why, and the tasks currently running or queued."""
     return (await _get_box()).status()
 
 
-def _artifact_dir(box: AgentBox, task_id: str) -> Path:
+def _artifact_dir(box: Anemone, task_id: str) -> Path:
     if not task_id.isalnum():
         raise ToolError("invalid task_id")
     d = (Path(box.cfg.runs_dir) / task_id).resolve()
@@ -194,17 +194,17 @@ async def read_artifact(task_id: str, path: str, max_bytes: int = 50_000) -> dic
 
 @server.tool(structured_output=True, annotations=ToolAnnotations(title="Clean up leftover containers", destructiveHint=False, idempotentHint=True, openWorldHint=False))
 async def cleanup() -> dict[str, Any]:
-    """Remove agentbox containers left behind by crashed or killed runs. Never touches containers that
-    belong to a running agentbox, including this one."""
+    """Remove anemone containers left behind by crashed or killed runs. Never touches containers that
+    belong to a running anemone, including this one."""
     box = await _get_box()
     removed = await asyncio.to_thread(janitor.sweep, box.client, False, box.owner)
     return {"removed": removed}
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(prog="agentbox-mcp", description="agentbox MCP server (stdio)")
-    ap.add_argument("--home", default=os.environ.get("AGENTBOX_HOME"),
-                    help="folder holding agentbox.toml, runs/ and .agentbox/ (default: current folder)")
+    ap = argparse.ArgumentParser(prog="anemone-mcp", description="anemone MCP server (stdio)")
+    ap.add_argument("--home", default=os.environ.get("ANEMONE_HOME"),
+                    help="folder holding anemone.toml, runs/ and .anemone/ (default: current folder)")
     args = ap.parse_args()
     if args.home:
         os.chdir(Path(args.home).expanduser())

@@ -1,5 +1,5 @@
 // Ported from ascii-sharks (MIT, (c) 2026 drewdi) — see ./LICENSE.
-// Changes for agentbox: every colour, glyph and shape comes from the theme, plus task
+// Changes for anemone: every colour, glyph and shape comes from the theme, plus task
 // labels, coloured "task finished" bursts and highlighted (queued) prey.
 /**
  * Draws the World as a grid of ASCII cells:
@@ -55,17 +55,17 @@ export class AsciiRenderer {
     this.heat = new Float32Array(0);
     this.dotPhase = new Float32Array(0);
     this.dotFreq = new Float32Array(0);
-    this.sharkFlag = new Uint8Array(0);
-    this.sharkShade = new Float32Array(0);
-    this.sharkKey = new Uint32Array(0);
-    this.sharkDepth = new Float32Array(0);
-    this.sharkKind = new Uint8Array(0);
-    this.sharkShadow = new Uint8Array(0);
+    this.creatureFlag = new Uint8Array(0);
+    this.creatureShade = new Float32Array(0);
+    this.creatureKey = new Uint32Array(0);
+    this.creatureDepth = new Float32Array(0);
+    this.creatureKind = new Uint8Array(0);
+    this.creatureShadow = new Uint8Array(0);
     this.fishStamp = new Uint32Array(0);
     this.spine = new Float32Array(NODES * 2);
     this.arc = new Float32Array(NODES);
     this.arcTotal = 1;
-    this.sharkId = 0;
+    this.creatureId = 0;
     this.finTipLeft = 0;
     this.finTipRight = 0;
     this.hitFlag = 0;
@@ -133,12 +133,12 @@ export class AsciiRenderer {
       this.heat = new Float32Array(n);
       this.dotPhase = new Float32Array(n);
       this.dotFreq = new Float32Array(n);
-      this.sharkFlag = new Uint8Array(n);
-      this.sharkShade = new Float32Array(n);
-      this.sharkKey = new Uint32Array(n);
-      this.sharkDepth = new Float32Array(n);
-      this.sharkKind = new Uint8Array(n);
-      this.sharkShadow = new Uint8Array(n);
+      this.creatureFlag = new Uint8Array(n);
+      this.creatureShade = new Float32Array(n);
+      this.creatureKey = new Uint32Array(n);
+      this.creatureDepth = new Float32Array(n);
+      this.creatureKind = new Uint8Array(n);
+      this.creatureShadow = new Uint8Array(n);
       this.fishStamp = new Uint32Array(n);
     }
     for (let i = 0; i < n; i++) {
@@ -179,7 +179,7 @@ export class AsciiRenderer {
     if (cols === 0) return;
     const t = world.time;
     this.consumeEvents(world);
-    this.rasterizeSharks(world.sharks, t);
+    this.rasterizeCreatures(world.creatures, t);
     this.depositWake(world);
     this.diffuse(dt);
 
@@ -195,7 +195,7 @@ export class AsciiRenderer {
     ctx.textBaseline = "middle";
     this.drawHeat();
     this.drawFish();
-    this.drawSharks(t);
+    this.drawCreatures(t);
     this.drawBursts(t);
     this.drawLabels(world);
   }
@@ -245,7 +245,7 @@ export class AsciiRenderer {
       const i = this.cellIndex(f.x, f.y);
       if (i >= 0) energy[i] = Math.min(1.6, energy[i] + 0.012 + f.alarm * 0.03);
     }
-    for (const sh of world.sharks) {
+    for (const sh of world.creatures) {
       for (let k = NODES - 6; k < NODES; k++) {
         const i = this.cellIndex(sh.nodes[k * 2], sh.nodes[k * 2 + 1]);
         if (i >= 0) energy[i] = Math.min(1.6, energy[i] + 0.05 + sh.speed * 0.0012);
@@ -280,7 +280,7 @@ export class AsciiRenderer {
    * Classify one point against the current creature (spine/arc already built).
    * Body coordinates: s along the spine (0 head → 1 tail), v across it.
    */
-  sampleShark(px, py, L) {
+  sampleCreature(px, py, L) {
     const { spine, arc } = this;
     let best = Infinity;
     let bestS = 0;
@@ -348,7 +348,7 @@ export class AsciiRenderer {
         shade = Math.max(shade, 0.7);
       } else if (shape.ridges && shape.ridges(s, across)) {
         shade = Math.max(shade, 0.8);
-      } else if (shape.marking && shape.marking(s, a * bestSign, L, across, this.sharkId)) {
+      } else if (shape.marking && shape.marking(s, a * bestSign, L, across, this.creatureId)) {
         flag = FLAG_MARK;
       }
       this.hitFlag = flag;
@@ -362,7 +362,7 @@ export class AsciiRenderer {
       inTriangle(u, a, L * p0, 0, L * p1, 0, L * p2, tip) &&
       !(shape.falcate && inTriangle(u, a, L * p1, 0, L * (p1 + (p2 - p1) * 0.33), tip * 0.55, L * p2, tip))
     ) {
-      this.hitFlag = shape.marking && shape.marking(s, a * bestSign, L, 0, this.sharkId) ? FLAG_MARK : FLAG_FIN;
+      this.hitFlag = shape.marking && shape.marking(s, a * bestSign, L, 0, this.creatureId) ? FLAG_MARK : FLAG_FIN;
       this.hitShade = 0.38 + 0.22 * (1 - clamp(a / tip, 0, 1));
       return true;
     }
@@ -382,18 +382,18 @@ export class AsciiRenderer {
    * Build a smooth, undulating render spine from the sim spine, then supersample every
    * cell in the creature's bounding box against its shape.
    */
-  rasterizeSharks(sharks, t) {
-    const { sharkFlag, sharkShade, sharkKey, sharkDepth, sharkKind, sharkShadow, spine, arc, cw, ch, cols, rows } = this;
-    sharkFlag.fill(0);
-    sharkShadow.fill(0);
+  rasterizeCreatures(creatures, t) {
+    const { creatureFlag, creatureShade, creatureKey, creatureDepth, creatureKind, creatureShadow, spine, arc, cw, ch, cols, rows } = this;
+    creatureFlag.fill(0);
+    creatureShadow.fill(0);
 
-    for (const sh of sharks) {
+    for (const sh of creatures) {
       const L = sh.length;
       const n = sh.nodes;
       const swim = clamp(sh.speed / 60, 0.4, 1.4);
       const kindIndex = this.kindIndex(sh.kind);
       this.shape = this.shapes[this.kinds[kindIndex]];
-      this.sharkId = sh.id;
+      this.creatureId = sh.id;
 
       for (let k = 0; k < NODES; k++) {
         const s = k / (NODES - 1);
@@ -443,7 +443,7 @@ export class AsciiRenderer {
         for (let c = c0; c <= c1; c++) {
           const x = c * cw;
           const y = r * ch;
-          const centerHit = this.sampleShark(x + cw / 2, y + ch / 2, L);
+          const centerHit = this.sampleCreature(x + cw / 2, y + ch / 2, L);
           if (!centerHit && this.hitDist > skipBeyond) continue;
           const flag = this.hitFlag;
           const shade = this.hitShade;
@@ -451,48 +451,48 @@ export class AsciiRenderer {
           const v = this.hitV;
           let hits = centerHit ? 1 : 0;
           for (let k = 0; k < SUBSAMPLES.length; k += 2) {
-            if (this.sampleShark(x + SUBSAMPLES[k] * cw, y + SUBSAMPLES[k + 1] * ch, L)) hits++;
+            if (this.sampleCreature(x + SUBSAMPLES[k] * cw, y + SUBSAMPLES[k + 1] * ch, L)) hits++;
           }
           if (hits === 0) continue;
           const coverage = hits / 5;
           const i = r * cols + c;
           const key = (hash3(Math.round(s * 52), Math.round(v / (cw * 0.9)), sh.id) * 4294967295) >>> 0;
-          sharkKey[i] = key;
-          sharkDepth[i] = sh.depth;
-          sharkKind[i] = kindIndex;
+          creatureKey[i] = key;
+          creatureDepth[i] = sh.depth;
+          creatureKind[i] = kindIndex;
           if (centerHit && coverage >= 0.6) {
-            sharkFlag[i] = flag;
+            creatureFlag[i] = flag;
             const flicker = (hash3(c, r, Math.floor(t * 6)) - 0.5) * 0.06;
-            sharkShade[i] = clamp(shade + flicker, 0, 1);
+            creatureShade[i] = clamp(shade + flicker, 0, 1);
             const sc = c + shadowDc;
             const sr = r + shadowDr;
-            if (sc < cols && sr < rows) sharkShadow[sr * cols + sc] = 1;
+            if (sc < cols && sr < rows) creatureShadow[sr * cols + sc] = 1;
           } else {
-            sharkFlag[i] = FLAG_EDGE;
-            sharkShade[i] = coverage;
+            creatureFlag[i] = FLAG_EDGE;
+            creatureShade[i] = coverage;
           }
         }
       }
     }
   }
 
-  drawSharks(t) {
-    const { ctx, cols, rows, cw, ch, sharkFlag, sharkShade, sharkKey, sharkDepth, sharkKind } = this;
+  drawCreatures(t) {
+    const { ctx, cols, rows, cw, ch, creatureFlag, creatureShade, creatureKey, creatureDepth, creatureKind } = this;
     const { glyphs, accents, eyeColor } = this.theme;
     // Chance that a skin cell flashes an accent colour; 0 turns the shimmer off.
     const shimmer = this.theme.shimmer ?? 0;
     const n = cols * rows;
     for (let i = 0; i < n; i++) {
-      const flag = sharkFlag[i];
+      const flag = creatureFlag[i];
       if (!flag) continue;
       const col = i % cols;
       const row = (i / cols) | 0;
       const x = col * cw;
       const y = row * ch;
-      const key = sharkKey[i];
-      const shade = sharkShade[i];
-      const dim = 0.7 + 0.3 * sharkDepth[i];
-      const [tr, tg, tb] = this.shapes[this.kinds[sharkKind[i]]].tint;
+      const key = creatureKey[i];
+      const shade = creatureShade[i];
+      const dim = 0.7 + 0.3 * creatureDepth[i];
+      const [tr, tg, tb] = this.shapes[this.kinds[creatureKind[i]]].tint;
       const tick = Math.floor(t * 2.4 + (key % 997) / 97);
       const roll = hash3(key, tick, 7);
 
@@ -544,7 +544,7 @@ export class AsciiRenderer {
   // ── prey, wake, heat, bursts, labels ────────────────────────────────
 
   markFish(world) {
-    const { fishStamp, fishBuckets, sharkFlag, taggedCells } = this;
+    const { fishStamp, fishBuckets, creatureFlag, taggedCells } = this;
     const frame = ++this.frameId;
     for (const bucket of fishBuckets) bucket.length = 0;
     taggedCells.length = 0;
@@ -552,7 +552,7 @@ export class AsciiRenderer {
       for (const f of world.fish) {
         if (!f.alive || (f.depth > 0.78 ? 0 : 1) !== pass) continue;
         const i = this.cellIndex(f.x, f.y);
-        if (i < 0 || fishStamp[i] === frame || sharkFlag[i]) continue;
+        if (i < 0 || fishStamp[i] === frame || creatureFlag[i]) continue;
         fishStamp[i] = frame;
         if (f.tagged) {
           taggedCells.push(i);
@@ -595,14 +595,14 @@ export class AsciiRenderer {
 
   /** Wake dots: cells where the wake field is strong light up in the theme's wake colour. */
   drawWake() {
-    const { ctx, cols, rows, cw, ch, energy, sharkFlag, fishStamp, frameId } = this;
+    const { ctx, cols, rows, cw, ch, energy, creatureFlag, fishStamp, frameId } = this;
     const small = Math.max(2, Math.round(cw * 0.19));
     const size = small + 1;
     for (let l = 0; l < ALPHA_LEVELS; l++) {
       ctx.fillStyle = this.wakeStyles[l];
       for (let i = 0; i < cols * rows; i++) {
         const e = energy[i];
-        if (e <= 0.45 || sharkFlag[i] || fishStamp[i] === frameId) continue;
+        if (e <= 0.45 || creatureFlag[i] || fishStamp[i] === frameId) continue;
         if (clamp(Math.floor((e - 0.45) * 5), 0, ALPHA_LEVELS - 1) !== l) continue;
         const col = i % cols;
         const row = (i / cols) | 0;
@@ -635,7 +635,7 @@ export class AsciiRenderer {
   drawLabels(world) {
     const { ctx, ch } = this;
     ctx.font = `500 ${Math.max(10, Math.round(ch * 0.62))}px ${this.fontFamily}`;
-    for (const sh of world.sharks) {
+    for (const sh of world.creatures) {
       if (!sh.label || sh.leaving) continue;
       const x = sh.nodes[0];
       const y = sh.nodes[1] - Math.max(ch * 1.6, sh.length * 0.12);

@@ -1,4 +1,4 @@
-/* Layout for the agentbox monitor: the ASCII ocean fills the screen and Arc's cards float over it as
+/* Layout for the anemone monitor: the ASCII ocean fills the screen and Arc's cards float over it as
    glass windows. Every visible component is from Arc (src/components/arc); this file only places them
    and keeps them on one rhythm: one radius, one padding, one glass surface, Arc tokens throughout. */
 
@@ -32,7 +32,7 @@ body {
 .ocean { position: fixed; inset: 0; }
 .ocean-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; font-family: "Geist Mono Variable", ui-monospace, monospace; }
 
-/* An invisible target that follows the pointer over a shark, so Arc's HoverCard has something to anchor to. */
+/* An invisible target that follows the pointer over a creature, so Arc's HoverCard has something to anchor to. */
 .ocean-probe { position: absolute; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: help; }
 
 .ocean-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-8); pointer-events: none; }

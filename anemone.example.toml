@@ -1,6 +1,6 @@
-# Copy this file to agentbox.toml and change what you need. Every setting is optional.
+# Copy this file to anemone.toml and change what you need. Every setting is optional.
 
-# Host reserve: agentbox leaves max(min, fraction) of the machine for you.
+# Host reserve: anemone leaves max(min, fraction) of the machine for you.
 # reserve_cpu_min = 2.0
 # reserve_cpu_frac = 0.10
 # reserve_mem_min_gb = 3.0
@@ -11,9 +11,9 @@
 # max_concurrency = 10
 
 # Containers
-# image = "agentbox/sandbox:latest"
-# gpu_image = "agentbox/sandbox-gpu:latest"
-# web_image = "agentbox/sandbox-web:latest"  # used when a task asks for browser = true
+# image = "anemone/sandbox:latest"
+# gpu_image = "anemone/sandbox-gpu:latest"
+# web_image = "anemone/sandbox-web:latest"  # used when a task asks for browser = true
 # browser_min_mem_gb = 1.5
 # network = "none"              # default network for tasks
 # allow_network = false         # may MCP clients request "bridge" (internet)?
@@ -22,4 +22,4 @@
 
 # Where outputs and state are kept
 # runs_dir = "runs"
-# state_dir = ".agentbox"
+# state_dir = ".anemone"

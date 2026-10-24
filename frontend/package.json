@@ -1,11 +1,11 @@
 {
-  "name": "agentbox-monitor",
+  "name": "anemone-monitor",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node -e \"require('fs').rmSync('../agentbox/ui/static/app',{recursive:true,force:true})\" && tsc -b && vite build",
+    "build": "node -e \"require('fs').rmSync('../anemone/ui/static/app',{recursive:true,force:true})\" && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },

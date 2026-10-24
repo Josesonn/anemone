@@ -1,5 +1,5 @@
 // The ASCII ocean engine and its themes are plain JavaScript files served from /static
-// (agentbox/ui/static/ocean, /themes) so a theme can be edited without rebuilding this app.
+// (anemone/ui/static/ocean, /themes) so a theme can be edited without rebuilding this app.
 // They are loaded at runtime rather than bundled.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,7 +21,7 @@ export interface Creature {
 
 export interface Engine {
   world: {
-    sharks: Creature[];
+    creatures: Creature[];
     fish: unknown[];
     queued: number;
     sync(specs: CreatureSpec[], finished?: Record<string, number[]>): void;
@@ -51,8 +51,8 @@ export async function loadTheme(name: string): Promise<Theme> {
   try {
     return (await load(`/static/themes/${encodeURIComponent(name)}.js`)).default as Theme;
   } catch (error) {
-    console.warn(`theme "${name}" failed to load, using sharks`, error);
-    return (await load("/static/themes/sharks.js")).default as Theme;
+    console.warn(`theme "${name}" failed to load, using goldfish`, error);
+    return (await load("/static/themes/goldfish.js")).default as Theme;
   }
 }
 

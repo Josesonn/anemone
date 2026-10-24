@@ -84,7 +84,7 @@ def probe_docker_gpu(client, image: str, cache: Path, max_age: float = 86400) ->
         c = client.containers.run(
             image, ["nvidia-smi", "-L"], detach=True,
             device_requests=[DeviceRequest(count=-1, capabilities=[["gpu"]])],
-            labels={"agentbox.managed": "true", "agentbox.owner": "probe", "agentbox.expires": str(time.time() + 120)},
+            labels={"anemone.managed": "true", "anemone.owner": "probe", "anemone.expires": str(time.time() + 120)},
         )
         try:
             c.wait(timeout=60)

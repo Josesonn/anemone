@@ -1,7 +1,7 @@
-"""agentbox monitor: a small local web server for the dashboard.
+"""anemone monitor: a small local web server for the dashboard.
 
-It reads what a running agentbox publishes in its home folder (.agentbox/status.json and
-history.db) plus Docker's view of agentbox containers. It can pause, resume or stop a running
+It reads what a running anemone publishes in its home folder (.anemone/status.json and
+history.db) plus Docker's view of anemone containers. It can pause, resume or stop a running
 task's container, but only for requests from the monitor page itself, never from other websites.
 """
 from __future__ import annotations
@@ -139,7 +139,7 @@ class Monitor:
         return None
 
     def container_for(self, task_id: str):
-        """The Docker container running this task, if it is a live, agentbox-managed one."""
+        """The Docker container running this task, if it is a live, anemone-managed one."""
         task = self.find_task(task_id)
         if not task or not task.get("container"):
             return None, task
@@ -198,7 +198,7 @@ class Monitor:
 def _same_origin(request: Request) -> bool:
     """Controls only work from the monitor page: a custom header (which other sites can't send without a CORS
     preflight we never answer) and, when the browser sends one, an Origin on this machine and port."""
-    if request.headers.get("x-agentbox") != "1":
+    if request.headers.get("x-anemone") != "1":
         return False
     origin = request.headers.get("origin")
     if origin is None:
@@ -209,7 +209,7 @@ def _same_origin(request: Request) -> bool:
 
 def create_app(home: Path | None = None) -> Starlette:
     home = (home or Path.cwd()).resolve()
-    cfg = Config.load(home / "agentbox.toml")
+    cfg = Config.load(home / "anemone.toml")
     mon = Monitor(cfg, home)
 
     def index(request):
@@ -269,7 +269,7 @@ def serve(home: Path | None = None, port: int = 7400, open_browser: bool = True)
                 port = p
                 break
     url = f"http://127.0.0.1:{port}/"
-    print(f"agentbox monitor on {url}  (Ctrl+C to stop)", flush=True)
+    print(f"anemone monitor on {url}  (Ctrl+C to stop)", flush=True)
     if open_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     uvicorn.run(create_app(home), host="127.0.0.1", port=port, log_level="warning")

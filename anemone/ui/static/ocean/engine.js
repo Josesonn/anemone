@@ -1,5 +1,5 @@
 // Ported from ascii-sharks (MIT, (c) 2026 drewdi) — see ./LICENSE.
-// Changes for agentbox: takes a theme (swappable at runtime) and exposes the world so the
+// Changes for anemone: takes a theme (swappable at runtime) and exposes the world so the
 // dashboard can feed it live data.
 import { AsciiRenderer } from "./renderer.js";
 import { World } from "./world.js";

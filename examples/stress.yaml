@@ -1,4 +1,4 @@
-# 60 CPU-heavy tasks (each spins one core for 6 s). agentbox decides how many run at once.
+# 60 CPU-heavy tasks (each spins one core for 6 s). anemone decides how many run at once.
 tasks:
   - kind: burn
     repeat: 60

@@ -1,8 +1,8 @@
-from agentbox.config import Config
-from agentbox.gpu import GPUAllocator, GPURequest
-from agentbox.hardware import GPUInfo, HardwareSnapshot
-from agentbox.history import History
-from agentbox.optimizer import (Resources, Tuner, boosted_cpus, compute_budget, fits, learned_size,
+from anemone.config import Config
+from anemone.gpu import GPUAllocator, GPURequest
+from anemone.hardware import GPUInfo, HardwareSnapshot
+from anemone.history import History
+from anemone.optimizer import (Resources, Tuner, boosted_cpus, compute_budget, fits, learned_size,
                                 max_concurrency, size_classes)
 
 CFG = Config()

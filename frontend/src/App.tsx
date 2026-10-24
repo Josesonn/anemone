@@ -64,13 +64,13 @@ export default function App() {
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [reserved, setReserved] = useState("load");
-  const [hidden, setHidden] = useState(() => store.get("agentbox.panelsHidden") === "1");
+  const [hidden, setHidden] = useState(() => store.get("anemone.panelsHidden") === "1");
   const seen = useRef<Set<string> | null>(null);
 
-  // Sharks by default. A different creature file in /static/themes can be tried with ?theme=<name>.
-  useEffect(() => { loadTheme(new URLSearchParams(location.search).get("theme") ?? "sharks").then(setTheme); }, []);
+  // Goldfish by default. A different creature file in /static/themes can be tried with ?theme=<name>.
+  useEffect(() => { loadTheme(new URLSearchParams(location.search).get("theme") ?? "goldfish").then(setTheme); }, []);
 
-  const togglePanels = useCallback(() => setHidden(h => { store.set("agentbox.panelsHidden", h ? "0" : "1"); return !h; }), []);
+  const togglePanels = useCallback(() => setHidden(h => { store.set("anemone.panelsHidden", h ? "0" : "1"); return !h; }), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "h" && !(e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) togglePanels();
@@ -80,7 +80,7 @@ export default function App() {
   }, [togglePanels]);
 
   const onEngine = useCallback((e: Engine) => {
-    (globalThis as Record<string, unknown>).agentboxMonitor = { engine: e };
+    (globalThis as Record<string, unknown>).anemoneMonitor = { engine: e };
   }, []);
 
   const active = isActive(state);
@@ -184,7 +184,7 @@ export default function App() {
               columns={columns}
               rowKey="id"
               caption="Running tasks"
-              emptyMessage={q ? `No running task matches “${query}”` : st ? "Nothing running right now" : "No agentbox is running"}
+              emptyMessage={q ? `No running task matches “${query}”` : st ? "Nothing running right now" : "No anemone is running"}
               defaultSort={{ key: "elapsed", direction: "desc" }}
               selectable
               selectedKeys={selected}
