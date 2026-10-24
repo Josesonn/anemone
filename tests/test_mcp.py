@@ -1,4 +1,4 @@
-"""End-to-end: start agentbox-mcp as a subprocess and drive it over stdio like a real MCP client."""
+"""End-to-end: start anemone-mcp as a subprocess and drive it over stdio like a real MCP client."""
 import shutil
 import sys
 from pathlib import Path
@@ -11,17 +11,17 @@ from tests.test_integration import CLIENT
 
 needs_docker = pytest.mark.skipif(CLIENT is None, reason="Docker engine not running")
 
-EXE = Path(sys.executable).with_name("agentbox-mcp.exe" if sys.platform == "win32" else "agentbox-mcp")
+EXE = Path(sys.executable).with_name("anemone-mcp.exe" if sys.platform == "win32" else "anemone-mcp")
 
 
 @pytest.fixture
 def home(tmp_path):
-    (tmp_path / "agentbox.toml").write_text("tune_interval = 1.0\n")
+    (tmp_path / "anemone.toml").write_text("tune_interval = 1.0\n")
     return tmp_path
 
 
 async def _session(home):
-    params = StdioServerParameters(command=str(EXE if EXE.exists() else shutil.which("agentbox-mcp")), args=["--home", str(home)])
+    params = StdioServerParameters(command=str(EXE if EXE.exists() else shutil.which("anemone-mcp")), args=["--home", str(home)])
     return stdio_client(params)
 
 
@@ -51,7 +51,7 @@ async def test_mcp_end_to_end(home):
             a = await call(s, "read_artifact", task_id=r["task_id"], path="report.txt")
             assert a["content"] == "hello from the sandbox"
 
-            bad = await s.call_tool("read_artifact", {"task_id": r["task_id"], "path": "../../agentbox.toml"})
+            bad = await s.call_tool("read_artifact", {"task_id": r["task_id"], "path": "../../anemone.toml"})
             assert bad.is_error
 
             denied = await s.call_tool("run_task", {"cmd": "true", "network": "bridge"})

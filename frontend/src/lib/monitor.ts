@@ -171,7 +171,7 @@ export interface TaskDetail { task: RunningTask; container: ContainerDetail | nu
 
 /** Pause, resume or stop a task's container. The header proves the request comes from this page. */
 export async function taskAction(id: string, action: "pause" | "resume" | "stop") {
-  const r = await fetch(`/api/tasks/${encodeURIComponent(id)}/${action}`, { method: "POST", headers: { "X-Agentbox": "1" } });
+  const r = await fetch(`/api/tasks/${encodeURIComponent(id)}/${action}`, { method: "POST", headers: { "X-Anemone": "1" } });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
   return body as { ok: boolean; state: string };

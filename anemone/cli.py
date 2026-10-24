@@ -1,4 +1,4 @@
-"""agentbox CLI: doctor, run, batch, status, gc."""
+"""anemone CLI: doctor, run, batch, status, gc."""
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +22,7 @@ from .gpu import GPURequest
 from .hardware import probe_docker_gpu, read_gpus, snapshot
 from .optimizer import compute_budget, max_concurrency, size_classes
 from .sandbox import Result, Task
-from .scheduler import AgentBox
+from .scheduler import Anemone
 
 # Task output can contain any character; never crash printing it on a console that can't show it (Windows cp1252).
 for _stream in (sys.stdout, sys.stderr):
@@ -61,7 +61,7 @@ def _build(client, dockerfile: str, tag: str) -> None:
 def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
            gpu_image: bool = typer.Option(False, "--gpu-image", help="Also build the CUDA image (several GB)."),
            web_image: bool = typer.Option(False, "--web-image", help="Also build the browser image (Chromium + Playwright, ~2.8 GB).")):
-    """Check Docker, detect hardware and show what agentbox will do with it."""
+    """Check Docker, detect hardware and show what anemone will do with it."""
     cfg = Config.load()
     client = _client()
     if build:
@@ -89,7 +89,7 @@ def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
     t.add_row("Docker → GPU", "[green]working[/green]" if gpu_ok else ("[yellow]not reachable[/yellow]" if gpus else "no NVIDIA GPU"))
     con.print(t)
 
-    t = Table(title="What agentbox will do")
+    t = Table(title="What anemone will do")
     t.add_column("Item"); t.add_column("Value")
     t.add_row("Budget (after host reserve)", f"{b.cpus:g} CPUs, {b.mem_gb:.1f} GB")
     for k, v in sizes.items():
@@ -102,7 +102,7 @@ def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
             con.print(f"[green]✓[/green] image {name}")
         except Exception:
             hint = "--gpu-image" if name == cfg.gpu_image else "--web-image" if name == cfg.web_image else "--build"
-            con.print(f"[yellow]•[/yellow] image {name} missing (agentbox doctor {hint})")
+            con.print(f"[yellow]•[/yellow] image {name} missing (anemone doctor {hint})")
     if gpus and not gpu_ok:
         con.print("[yellow]Docker cannot see the GPU.[/yellow] On Windows, update the NVIDIA driver and keep Docker Desktop on the WSL 2 backend.")
     if platform.system() == "Windows" and hw.docker_mem_gb and hw.docker_mem_gb < 0.75 * hw.host_mem_total_gb:
@@ -131,15 +131,15 @@ def run(ctx: typer.Context,
         image: str = typer.Option(None), kind: str = typer.Option("cli"),
         browser: bool = typer.Option(False, help="use the browser image (headless Chromium + Playwright)"),
         file: list[Path] = typer.Option([], help="copy a local file into /workspace")):
-    """Run one command in a fresh sandbox:  agentbox run -- python -c "print(1)" """
+    """Run one command in a fresh sandbox:  anemone run -- python -c "print(1)" """
     if not ctx.args:
-        con.print("Give a command after --, e.g. agentbox run -- echo hi")
+        con.print("Give a command after --, e.g. anemone run -- echo hi")
         raise typer.Exit(2)
     task = Task(cmd=shlex.join(ctx.args), size=size, cpus=cpus, mem_gb=mem, network=net, timeout=timeout, image=image, kind=kind,
                 gpu=GPURequest(count=gpu, vram_gb=vram) if gpu else None, browser=browser, files={p.name: p.read_bytes() for p in file})
 
     async def go() -> Result:
-        async with AgentBox(client=_client()) as box:
+        async with Anemone(client=_client()) as box:
             return await box.run(task)
 
     r = asyncio.run(go())
@@ -191,7 +191,7 @@ def batch(path: Path, live: bool = typer.Option(True, help="show a live dashboar
     tasks = _load_tasks(path)
 
     async def go() -> list[Result]:
-        async with AgentBox(client=_client()) as box:
+        async with Anemone(client=_client()) as box:
             futs = [box.submit(t) for t in tasks]
             if live:
                 with Live(_status_view(box.status()), console=con, refresh_per_second=4) as lv:
@@ -212,7 +212,7 @@ def batch(path: Path, live: bool = typer.Option(True, help="show a live dashboar
 
 @app.command()
 def status(once: bool = typer.Option(False, help="print once instead of refreshing")):
-    """Live view of a running agentbox (reads .agentbox/status.json)."""
+    """Live view of a running anemone (reads .anemone/status.json)."""
     cfg = Config.load()
     path = cfg.state_path / "status.json"
 
@@ -220,9 +220,9 @@ def status(once: bool = typer.Option(False, help="print once instead of refreshi
         try:
             s = json.loads(path.read_text())
         except Exception:
-            return Panel("No agentbox is running here. Start one with `agentbox batch` or the Python API.")
+            return Panel("No anemone is running here. Start one with `anemone batch` or the Python API.")
         if time.time() - s["ts"] > 3 * cfg.tune_interval + 5:
-            return Panel("The last agentbox status is stale; the scheduler has probably exited.")
+            return Panel("The last anemone status is stale; the scheduler has probably exited.")
         return _status_view(s)
 
     if once:
@@ -239,7 +239,7 @@ def status(once: bool = typer.Option(False, help="print once instead of refreshi
 
 @app.command()
 def ui(port: int = typer.Option(7400, help="port to serve on (the next free one is used if taken)"),
-       home: Path = typer.Option(None, help="agentbox folder to watch (default: current folder)"),
+       home: Path = typer.Option(None, help="anemone folder to watch (default: current folder)"),
        no_browser: bool = typer.Option(False, "--no-browser", help="don't open a browser tab")):
     """Open the live monitor in your browser (this computer only)."""
     from .ui.server import serve
@@ -248,7 +248,7 @@ def ui(port: int = typer.Option(7400, help="port to serve on (the next free one 
 
 @app.command()
 def gc(everything: bool = typer.Option(False, "--all", help="also remove containers owned by live processes")):
-    """Remove leftover agentbox containers (dead owner or expired)."""
+    """Remove leftover anemone containers (dead owner or expired)."""
     n = janitor.sweep(_client(), everything=everything)
     con.print(f"Removed {n} container(s).")
 

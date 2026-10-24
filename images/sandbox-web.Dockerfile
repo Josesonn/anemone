@@ -1,4 +1,4 @@
-# agentbox/sandbox-web: the standard sandbox plus a headless browser and common CLI tools.
+# anemone/sandbox-web: the standard sandbox plus a headless browser and common CLI tools.
 # Python Playwright with Chromium, Node.js, jq, wget, zip/unzip, sqlite3.
 FROM python:3.12-slim
 
@@ -18,6 +18,6 @@ RUN apt-get update \
 
 USER 1000:1000
 WORKDIR /workspace
-# Chromium keeps its profile and cache under HOME, which is the writable /tmp in agentbox.
+# Chromium keeps its profile and cache under HOME, which is the writable /tmp in anemone.
 ENV HOME=/tmp PYTHONDONTWRITEBYTECODE=1
 CMD ["sleep", "infinity"]

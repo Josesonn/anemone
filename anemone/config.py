@@ -1,4 +1,4 @@
-"""Settings, loaded from agentbox.toml when present. Every field has a hardware-agnostic default."""
+"""Settings, loaded from anemone.toml when present. Every field has a hardware-agnostic default."""
 from __future__ import annotations
 
 import tomllib
@@ -26,9 +26,9 @@ class Config(BaseModel):
     mem_low: float = 0.70
 
     # containers
-    image: str = "agentbox/sandbox:latest"
-    gpu_image: str = "agentbox/sandbox-gpu:latest"
-    web_image: str = "agentbox/sandbox-web:latest"  # headless Chromium + Playwright, Node.js, jq, ...
+    image: str = "anemone/sandbox:latest"
+    gpu_image: str = "anemone/sandbox-gpu:latest"
+    web_image: str = "anemone/sandbox-web:latest"  # headless Chromium + Playwright, Node.js, jq, ...
     browser_min_mem_gb: float = 1.5  # Chromium needs room; browser tasks never get less
     network: str = "none"
     allow_network: bool = False  # whether MCP clients may request internet access for a task
@@ -45,11 +45,11 @@ class Config(BaseModel):
 
     # paths
     runs_dir: str = "runs"
-    state_dir: str = ".agentbox"
+    state_dir: str = ".anemone"
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Config":
-        p = Path(path) if path else Path("agentbox.toml")
+        p = Path(path) if path else Path("anemone.toml")
         if p.exists():
             with p.open("rb") as f:
                 return cls(**tomllib.load(f))

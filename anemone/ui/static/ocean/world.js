@@ -1,5 +1,5 @@
 // Ported from ascii-sharks (MIT, (c) 2026 drewdi) — see ./LICENSE.
-// Changes for agentbox: creatures are driven by live data (sync()), they swim in when a
+// Changes for anemone: creatures are driven by live data (sync()), they swim in when a
 // task starts and out when it ends, their size and drive follow the task, and some prey
 // can be tagged (queued tasks). All looks come from the theme.
 /**
@@ -30,7 +30,7 @@ export class World {
     this.height = 0;
     this.time = 0;
     this.fish = [];
-    this.sharks = [];
+    this.creatures = [];
     this.events = [];
     this.pointer = { x: 0, y: 0, active: false };
     this.queued = 0;
@@ -135,7 +135,7 @@ export class World {
    */
   sync(specs, finished = {}) {
     if (!this.width) return;
-    const byId = new Map(this.sharks.map((s) => [s.taskId, s]));
+    const byId = new Map(this.creatures.map((s) => [s.taskId, s]));
     const live = new Set();
     for (const sp of specs) {
       live.add(sp.id);
@@ -147,11 +147,11 @@ export class World {
       sh.label = sp.label;
       sh.depth = 0.55 + 0.45 * clamp(sp.size, 0, 1);
     }
-    for (const sh of this.sharks) {
+    for (const sh of this.creatures) {
       if (!live.has(sh.taskId) && !sh.leaving) this.release(sh, finished[sh.taskId]);
     }
     // Smaller (farther) creatures draw first so big ones swim over them.
-    this.sharks.sort((a, b) => a.targetLength - b.targetLength);
+    this.creatures.sort((a, b) => a.targetLength - b.targetLength);
   }
 
   spawn(spec, count) {
@@ -184,7 +184,7 @@ export class World {
       activity: spec.activity ?? 0.5,
       leaving: false, leaveAt: 0, highlight: 0,
     };
-    this.sharks.push(sh);
+    this.creatures.push(sh);
     return sh;
   }
 
@@ -197,13 +197,13 @@ export class World {
 
   /** Flash a creature's label briefly (the dashboard calls this when you click a task). */
   highlight(taskId) {
-    for (const sh of this.sharks) if (sh.taskId === taskId) sh.highlight = 2.5;
+    for (const sh of this.creatures) if (sh.taskId === taskId) sh.highlight = 2.5;
   }
 
   creatureAt(x, y, radius = 70) {
     let best = null;
     let bestD = radius;
-    for (const sh of this.sharks) {
+    for (const sh of this.creatures) {
       if (sh.leaving) continue;
       for (let k = 0; k < NODES; k += 3) {
         const d = Math.hypot(sh.nodes[k * 2] - x, sh.nodes[k * 2 + 1] - y);
@@ -236,7 +236,7 @@ export class World {
     this.time += dt;
     this.rebuildHash();
     this.stepFish(dt);
-    this.stepSharks(dt);
+    this.stepCreatures(dt);
     this.respawn();
     this.tagQueued();
   }
@@ -281,7 +281,7 @@ export class World {
   }
 
   stepFish(dt) {
-    const { fish, sharks, pointer, width: W, height: H, time, species } = this;
+    const { fish, creatures, pointer, width: W, height: H, time, species } = this;
     const R = this.perception;
     const R2 = R * R;
     const foreignSep = this.foreignSep;
@@ -363,7 +363,7 @@ export class World {
 
       // Predators: distance to the nearest point along the front half of each creature.
       let fear = 0;
-      for (const sh of sharks) {
+      for (const sh of creatures) {
         const fearR = sh.length * 0.6 + 60;
         let best = Infinity, bx = 0, by = 0;
         for (let k = 0; k <= 12; k += 3) {
@@ -438,13 +438,13 @@ export class World {
     }
   }
 
-  stepSharks(dt) {
-    const { sharks, width: W, height: H, time } = this;
+  stepCreatures(dt) {
+    const { creatures, width: W, height: H, time } = this;
     const minSide = Math.min(W, H);
     const cxW = W / 2;
     const cyW = H / 2;
 
-    for (const sh of sharks) {
+    for (const sh of creatures) {
       sh.length += (sh.targetLength - sh.length) * Math.min(1, dt * 0.8);
       sh.highlight = Math.max(0, sh.highlight - dt);
       const L = sh.length;
@@ -498,7 +498,7 @@ export class World {
         }
       }
 
-      for (const other of sharks) {
+      for (const other of creatures) {
         if (other === sh) continue;
         for (let k = 0; k < NODES; k += 4) {
           const ox = hx - other.nodes[k * 2];
@@ -573,7 +573,7 @@ export class World {
     }
 
     // Drop creatures that have left the screen.
-    this.sharks = sharks.filter((sh) => {
+    this.creatures = creatures.filter((sh) => {
       if (!sh.leaving) return true;
       const margin = sh.length * 1.05;
       const tailX = sh.nodes[(NODES - 1) * 2];

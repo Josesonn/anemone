@@ -2,33 +2,33 @@
 
 The monitor's ocean is split into two halves:
 
-- **The engine** (`agentbox/ui/static/ocean/`) decides how things *move*: creatures hunting, prey schooling, ripples spreading. You never need to edit it.
-- **A theme** (`agentbox/ui/static/themes/<name>.js`) decides how everything *looks*: creature shapes, prey characters, colours, the words in the panels, and how the prey schools.
+- **The engine** (`anemone/ui/static/ocean/`) decides how things *move*: creatures hunting, prey schooling, ripples spreading. You never need to edit it.
+- **A theme** (`anemone/ui/static/themes/<name>.js`) decides how everything *looks*: creature shapes, prey characters, colours, the words in the panels, and how the prey schools.
 
-So turning sharks into dragons, birds or spaceships means writing a theme. You don't have to touch the engine.
+So turning goldfish into dragons, birds or spaceships means writing a theme. You don't have to touch the engine.
 
 ## The quick workflow
 
 1. **Start the monitor and give it some work to show.** Run these in two terminals:
    ```bash
-   agentbox ui
+   anemone ui
    ```
    ```bash
-   agentbox batch examples/stress.yaml
+   anemone batch examples/stress.yaml
    ```
-2. **Copy the theme.** `sharks.js` is the full example, with every shape written out.
+2. **Copy the theme.** `goldfish.js` is the default theme. Its scene, skin and prey settings are complete; its `shapes` hold a single placeholder body until the goldfish shapes are drawn, so use the field reference below to write your own.
 3. **Rename it.** Save the copy as `themes/dragons.js`, then change `name: "dragons"` inside it.
-4. **Open it:** `http://127.0.0.1:7400/?theme=dragons`. Without `?theme=`, the monitor shows `sharks`.
-5. **Edit, save, reload, repeat.** If the page shows nothing, press F12 and check the **Console** tab for a typo. A theme that fails to load falls back to `sharks` and logs why.
+4. **Open it:** `http://127.0.0.1:7400/?theme=dragons`. Without `?theme=`, the monitor shows `goldfish`.
+5. **Edit, save, reload, repeat.** If the page shows nothing, press F12 and check the **Console** tab for a typo. A theme that fails to load falls back to `goldfish` and logs why.
 
 ## What's in a theme
 
-A theme is a JavaScript file that exports one object. Everything below is from `sharks.js`.
+A theme is a JavaScript file that exports one object. The examples below use the fields from `goldfish.js`.
 
 ### Words
 
 ```js
-words: { creature: "shark", creatures: "sharks", prey: "fish", place: "ocean" },
+words: { creature: "goldfish", creatures: "goldfish", prey: "fish", place: "ocean" },
 ```
 
 These are used in the monitor's text, for example "The ocean is quiet". For dragons you might write `{ creature: "dragon", creatures: "dragons", prey: "ember", place: "sky" }`.
@@ -76,7 +76,7 @@ s = 0 (head)                                   s = 1 (tail)
 
 | Field | Meaning |
 |---|---|
-| `halfWidth(s)` | **The body outline.** A function returning half the body's width at `s`. A shark is thin at the snout, widest about a third of the way along, then thin towards the tail. |
+| `halfWidth(s)` | **The body outline.** A function returning half the body's width at `s`. A typical fish is thin at the snout, widest about a third of the way along, then thin towards the tail. |
 | `pectoral: [start, end, tip, reach]` | The big side fins, or *wings*: where their root starts and ends along the body, where the tip points, and how far it reaches out |
 | `falcate` | `true` cuts a notch into the back edge of the side fins, giving a sickle shape |
 | `pelvic: [start, end, tip, reach]` | A smaller pair of fins further back |
@@ -133,8 +133,8 @@ Each entry is a kind of school:
 You don't have to copy everything. Spread an existing theme and override only what you change:
 
 ```js
-import sharks from "./sharks.js";
-export default { ...sharks, name: "sunset", background: "#120404", wake: [255, 140, 60] };
+import goldfish from "./goldfish.js";
+export default { ...goldfish, name: "sunset", background: "#120404", wake: [255, 140, 60] };
 ```
 
 ## Debugging in the browser
@@ -142,11 +142,11 @@ export default { ...sharks, name: "sunset", background: "#120404", wake: [255, 1
 Press **F12**, then open **Console**. The page exposes a handle:
 
 ```js
-agentboxMonitor.theme                       // the active theme object
-agentboxMonitor.engine.world.sharks         // every creature: position, size, kind, task id
-agentboxMonitor.engine.world.fish.length    // how many prey there are
+anemoneMonitor.theme                       // the active theme object
+anemoneMonitor.engine.world.creatures      // every creature: position, size, kind, task id
+anemoneMonitor.engine.world.fish.length    // how many prey there are
 ```
 
 ## Sharing your theme
 
-A theme is a single `.js` file. Send it to someone and they drop it into `agentbox/ui/static/themes/`, and it appears in the menu. If you based it on the shark shapes, keep the credit line at the top. Those shapes come from ascii-sharks, which is MIT-licensed.
+A theme is a single `.js` file. Send it to someone and they drop it into `anemone/ui/static/themes/`, and it appears in the menu.

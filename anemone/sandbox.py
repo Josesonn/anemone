@@ -22,7 +22,7 @@ from .config import Config
 from .gpu import GPURequest
 from .optimizer import Resources
 
-LABEL = "agentbox.managed"
+LABEL = "anemone.managed"
 CPU_PERIOD = 100_000
 
 
@@ -68,7 +68,7 @@ class Result(BaseModel):
     output: str = ""
     oom: bool = False
     timed_out: bool = False
-    stopped: bool = False  # killed from outside agentbox, e.g. Stop in the monitor
+    stopped: bool = False  # killed from outside anemone, e.g. Stop in the monitor
     duration: float = 0.0
     cpus: float = 0.0
     mem_gb: float = 0.0
@@ -111,8 +111,8 @@ def create_container(client, cfg: Config, image: str, network: str, res: Resourc
         environment={"HOME": "/tmp", "PYTHONDONTWRITEBYTECODE": "1"},
         labels={
             LABEL: "true",
-            "agentbox.owner": owner,
-            "agentbox.expires": str(time.time() + cfg.pool_ttl + cfg.default_timeout),
+            "anemone.owner": owner,
+            "anemone.expires": str(time.time() + cfg.pool_ttl + cfg.default_timeout),
         },
         **_limits(res),
     )

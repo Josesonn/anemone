@@ -83,9 +83,9 @@ export function OceanStage({ state, connected, theme, selectedId, onEngine }: Pr
   const words = theme?.words ?? {};
 
   let empty: { title: string; description: string } | null = null;
-  if (!connected) empty = { title: "Monitor disconnected", description: "Lost contact with agentbox ui. Is it still running in your terminal?" };
-  else if (state?.mode === "offline") empty = { title: `The ${words.place ?? "ocean"} is quiet`, description: `No agentbox is running in this folder. Ask Claude to use agentbox, or run agentbox batch, and the ${words.creatures ?? "creatures"} swim in here.` };
-  else if (state?.mode === "stale") empty = { title: "Nothing new for a while", description: `The agentbox that was running here stopped ${Math.round(state.age)}s ago.` };
+  if (!connected) empty = { title: "Monitor disconnected", description: "Lost contact with anemone ui. Is it still running in your terminal?" };
+  else if (state?.mode === "offline") empty = { title: `The ${words.place ?? "ocean"} is quiet`, description: `No anemone is running in this folder. Ask Claude to use anemone, or run anemone batch, and the ${words.creatures ?? "creatures"} swim in here.` };
+  else if (state?.mode === "stale") empty = { title: "Nothing new for a while", description: `The anemone that was running here stopped ${Math.round(state.age)}s ago.` };
 
   return (
     <div ref={stageRef} className="ocean" onPointerMove={onPointerMove} onPointerLeave={() => setHover(null)}>

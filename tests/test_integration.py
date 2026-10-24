@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from agentbox import AgentBox, Config, GPURequest, Task
+from anemone import Anemone, Config, GPURequest, Task
 
 docker = pytest.importorskip("docker")
 
@@ -28,12 +28,12 @@ def cfg(tmp_path):
 
 
 def managed(owner=None):
-    cs = CLIENT.containers.list(all=True, filters={"label": "agentbox.managed=true"})
-    return [c for c in cs if owner is None or c.labels.get("agentbox.owner") == owner]
+    cs = CLIENT.containers.list(all=True, filters={"label": "anemone.managed=true"})
+    return [c for c in cs if owner is None or c.labels.get("anemone.owner") == owner]
 
 
 async def test_echo_and_cleanup(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="echo hello && id -u"))
         owner = box.owner
     assert r.ok, r
@@ -42,21 +42,21 @@ async def test_echo_and_cleanup(cfg):
 
 
 async def test_files_in_and_artifacts_out(cfg, tmp_path):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="python solve.py", files={"solve.py": "open('out/answer.txt','w').write(str(6*7))"}))
     assert r.ok, r
     assert (tmp_path / "runs" / r.id / "answer.txt").read_text() == "42"
 
 
 async def test_oom_is_reported(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="python -c \"x = bytearray(900*1024*1024); print(len(x))\"", mem_gb=0.25, kind="oom-test"))
     assert r.oom, r
     assert not r.ok
 
 
 async def test_timeout_kills(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         t0 = time.time()
         r = await box.run(Task(cmd="sleep 999", timeout=2))
     assert r.timed_out and time.time() - t0 < 30
@@ -64,19 +64,19 @@ async def test_timeout_kills(cfg):
 
 async def test_network_off_by_default(cfg):
     code = "import urllib.request; urllib.request.urlopen('https://example.com', timeout=5); print('online')"
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd=["python", "-c", code]))
     assert not r.ok and "online" not in r.output
 
 
 async def test_readonly_root_and_no_root_user(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="touch /etc/x 2>&1; echo rc=$?"))
     assert "rc=1" in r.output
 
 
 async def test_many_tasks_respect_limit(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         peak = 0
 
         async def watch():
@@ -95,14 +95,14 @@ async def test_many_tasks_respect_limit(cfg):
 
 
 async def test_impossible_gpu_request_fails_fast(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="true", gpu=GPURequest(count=8, policy="wait")))
     assert r.error and "GPU unavailable" in r.error
 
 
 @pytest.mark.gpu
 async def test_gpu_visible(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         if not box.gpu.enabled:
             pytest.skip("Docker cannot reach a GPU")
         r = await box.run(Task(cmd="nvidia-smi -L", gpu=GPURequest(count=1, vram_gb=1)))
@@ -111,7 +111,7 @@ async def test_gpu_visible(cfg):
 
 @pytest.mark.gpu
 async def test_gpu_vram_serializes(cfg):
-    async with AgentBox(cfg, client=CLIENT) as box:
+    async with Anemone(cfg, client=CLIENT) as box:
         if not box.gpu.enabled:
             pytest.skip("Docker cannot reach a GPU")
         big = max(g.vram_total_gb for g in box.hw.gpus) * 0.6
@@ -129,7 +129,7 @@ def _has_image(name):
         return False
 
 
-@pytest.mark.skipif(CLIENT is None or not _has_image("agentbox/sandbox-web:latest"), reason="browser image not built")
+@pytest.mark.skipif(CLIENT is None or not _has_image("anemone/sandbox-web:latest"), reason="browser image not built")
 async def test_browser_task_renders_a_page(cfg):
     script = (
         "from playwright.sync_api import sync_playwright\n"
@@ -138,8 +138,8 @@ async def test_browser_task_renders_a_page(cfg):
         "    pg.set_content('<h1>hello from chromium</h1>')\n"
         "    print(pg.inner_text('h1')); pg.screenshot(path='out/shot.png'); b.close()\n"
     )
-    cfg = cfg.model_copy(update={"web_image": "agentbox/sandbox-web:latest"})
-    async with AgentBox(cfg, client=CLIENT) as box:
+    cfg = cfg.model_copy(update={"web_image": "anemone/sandbox-web:latest"})
+    async with Anemone(cfg, client=CLIENT) as box:
         r = await box.run(Task(cmd="python b.py", files={"b.py": script}, browser=True, kind="browser-test", timeout=120))
     assert r.ok, r
     assert "hello from chromium" in r.output

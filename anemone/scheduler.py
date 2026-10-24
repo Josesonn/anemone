@@ -1,4 +1,4 @@
-"""AgentBox: queue, admission control, the tuning loop and the background housekeeping."""
+"""Anemone: queue, admission control, the tuning loop and the background housekeeping."""
 from __future__ import annotations
 
 import asyncio
@@ -32,7 +32,7 @@ class _Run:
     sampler: Sampler | None = None
 
 
-class AgentBox:
+class Anemone:
     def __init__(self, config: Config | None = None, client=None):
         self.cfg = config or Config.load()
         self.client = client
@@ -51,7 +51,7 @@ class AgentBox:
         self.failed = 0
 
     # ---------- lifecycle ----------
-    async def __aenter__(self) -> "AgentBox":
+    async def __aenter__(self) -> "Anemone":
         await self.start()
         return self
 
@@ -86,7 +86,7 @@ class AgentBox:
         while self._heap:
             _, _, task, fut = heapq.heappop(self._heap)
             if not fut.done():
-                fut.set_result(Result(id=task.id, kind=task.kind, error="cancelled: AgentBox closed"))
+                fut.set_result(Result(id=task.id, kind=task.kind, error="cancelled: Anemone closed"))
         for r in list(self._running.values()):
             if r.container is not None:
                 await asyncio.to_thread(destroy, r.container)
@@ -168,8 +168,8 @@ class AgentBox:
         try:
             self.client.images.get(image)
         except docker.errors.ImageNotFound:
-            if image.startswith("agentbox/"):
-                raise RuntimeError(f"image {image} is not built yet; run `agentbox doctor --build`")
+            if image.startswith("anemone/"):
+                raise RuntimeError(f"image {image} is not built yet; run `anemone doctor --build`")
             self.client.images.pull(image)
         self._images.add(image)
         return image
