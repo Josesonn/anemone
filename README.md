@@ -47,6 +47,22 @@ agentbox doctor --build
 
 `agentbox doctor` checks Docker, shows the hardware it found, and shows how it will size sandboxes on your machine.
 
+## Sandbox images
+
+| Image | What's inside | Build with |
+|---|---|---|
+| `agentbox/sandbox` (default) | Debian 13, Python 3.12, pip, git, curl, gcc/g++/make | `agentbox doctor --build` |
+| `agentbox/sandbox-web` | All of the above plus headless **Chromium with Python Playwright**, Node.js/npm, jq, wget, zip/unzip, sqlite3 (~2.8 GB) | `agentbox doctor --web-image` |
+| `agentbox/sandbox-gpu` | CUDA runtime with Python | `agentbox doctor --gpu-image` |
+
+Use the browser image with `--browser` on the command line or `browser: true` from Claude. Browser tasks get at least 1.5 GB of memory. Add network access (`--net bridge`, which needs `allow_network = true` for Claude) to open real websites:
+
+```bash
+agentbox run --browser --net bridge --file browse.py -- python browse.py
+```
+
+Tasks can `pip install --user` extra packages when they have network access, but the system files are read-only, so tools that need `apt` have to be built into an image.
+
 ## Command-line use
 
 ```bash

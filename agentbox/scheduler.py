@@ -126,7 +126,7 @@ class AgentBox:
             "running": [{"id": r.task.id, "kind": r.task.kind, "cpus": round(r.cpus_now or r.req.cpus, 2), "mem_gb": r.req.mem_gb,
                          "cpu_now": round(r.sampler.cpu_now, 2) if r.sampler else 0, "mem_now_gb": round(r.sampler.mem_now_gb, 2) if r.sampler else 0,
                          "gpus": r.gpu_ids, "elapsed": round(time.time() - r.started, 1),
-                         "container": getattr(r.container, "id", None), "image": r.task.image or (self.cfg.gpu_image if r.gpu_ids else self.cfg.image),
+                         "container": getattr(r.container, "id", None), "image": r.task.image or (self.cfg.gpu_image if r.gpu_ids else self.cfg.web_image if r.task.browser else self.cfg.image),
                          "network": r.task.network or self.cfg.network, "timeout": r.task.timeout or self.cfg.default_timeout,
                          "started": r.started} for r in self._running.values()],
         }
@@ -152,6 +152,8 @@ class AgentBox:
             last = self.history.last(task.kind)
             if last and last[1]:  # the previous run of this kind ran out of memory: double it
                 r = Resources(r.cpus, max(r.mem_gb, last[0] * 2))
+        if task.browser:
+            r = Resources(r.cpus, max(r.mem_gb, self.cfg.browser_min_mem_gb))
         return r.clamp(self.budget)
 
     def _pool_target(self, cpu_util: float, mem_util: float) -> int:
@@ -256,7 +258,7 @@ class AgentBox:
             except RuntimeError:
                 image = self.cfg.image  # GPU image not built: the NVIDIA runtime still injects the driver and nvidia-smi
         else:
-            image = task.image or self.cfg.image
+            image = task.image or (self.cfg.web_image if task.browser else self.cfg.image)
         self._ensure_image(image)
         network = task.network or self.cfg.network
         c = None if gpu_ids else self.pool.take(image, network)

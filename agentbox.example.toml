@@ -13,6 +13,8 @@
 # Containers
 # image = "agentbox/sandbox:latest"
 # gpu_image = "agentbox/sandbox-gpu:latest"
+# web_image = "agentbox/sandbox-web:latest"  # used when a task asks for browser = true
+# browser_min_mem_gb = 1.5
 # network = "none"              # default network for tasks
 # allow_network = false         # may MCP clients request "bridge" (internet)?
 # default_timeout = 600         # seconds

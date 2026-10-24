@@ -119,3 +119,28 @@ async def test_gpu_vram_serializes(cfg):
         a, b = await box.map([Task(cmd="sleep 2", gpu=GPURequest(vram_gb=big)) for _ in range(2)])
     assert a.ok and b.ok
     assert time.time() - t0 >= 4  # second one waited for the first
+
+
+def _has_image(name):
+    try:
+        CLIENT.images.get(name)
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(CLIENT is None or not _has_image("agentbox/sandbox-web:latest"), reason="browser image not built")
+async def test_browser_task_renders_a_page(cfg):
+    script = (
+        "from playwright.sync_api import sync_playwright\n"
+        "with sync_playwright() as p:\n"
+        "    b = p.chromium.launch(); pg = b.new_page()\n"
+        "    pg.set_content('<h1>hello from chromium</h1>')\n"
+        "    print(pg.inner_text('h1')); pg.screenshot(path='out/shot.png'); b.close()\n"
+    )
+    cfg = cfg.model_copy(update={"web_image": "agentbox/sandbox-web:latest"})
+    async with AgentBox(cfg, client=CLIENT) as box:
+        r = await box.run(Task(cmd="python b.py", files={"b.py": script}, browser=True, kind="browser-test", timeout=120))
+    assert r.ok, r
+    assert "hello from chromium" in r.output
+    assert r.mem_gb >= 1.5  # browser tasks get room for Chromium

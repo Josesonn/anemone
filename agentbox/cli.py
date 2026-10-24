@@ -5,6 +5,7 @@ import asyncio
 import json
 import platform
 import shlex
+import sys
 import time
 from pathlib import Path
 
@@ -22,6 +23,13 @@ from .hardware import probe_docker_gpu, read_gpus, snapshot
 from .optimizer import compute_budget, max_concurrency, size_classes
 from .sandbox import Result, Task
 from .scheduler import AgentBox
+
+# Task output can contain any character; never crash printing it on a console that can't show it (Windows cp1252).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 app = typer.Typer(add_completion=False, help="Self-tuning ephemeral Docker sandboxes for AI agents.")
 con = Console()
@@ -51,7 +59,8 @@ def _build(client, dockerfile: str, tag: str) -> None:
 
 @app.command()
 def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
-           gpu_image: bool = typer.Option(False, "--gpu-image", help="Also build the CUDA image (several GB).")):
+           gpu_image: bool = typer.Option(False, "--gpu-image", help="Also build the CUDA image (several GB)."),
+           web_image: bool = typer.Option(False, "--web-image", help="Also build the browser image (Chromium + Playwright, ~2.8 GB).")):
     """Check Docker, detect hardware and show what agentbox will do with it."""
     cfg = Config.load()
     client = _client()
@@ -59,6 +68,8 @@ def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
         _build(client, "sandbox.Dockerfile", cfg.image)
     if gpu_image:
         _build(client, "sandbox-gpu.Dockerfile", cfg.gpu_image)
+    if web_image:
+        _build(client, "sandbox-web.Dockerfile", cfg.web_image)
     gpus = read_gpus()
     probe_img = cfg.image
     try:
@@ -85,12 +96,12 @@ def doctor(build: bool = typer.Option(False, help="Build the sandbox image."),
         t.add_row(f"Size '{k}'", f"{v.cpus:g} CPUs, {v.mem_gb:g} GB → up to {max_concurrency(b, v, cfg)} at once")
     con.print(t)
 
-    for name in (cfg.image, cfg.gpu_image):
+    for name in (cfg.image, cfg.web_image, cfg.gpu_image):
         try:
             client.images.get(name)
             con.print(f"[green]✓[/green] image {name}")
         except Exception:
-            hint = "--gpu-image" if name == cfg.gpu_image else "--build"
+            hint = "--gpu-image" if name == cfg.gpu_image else "--web-image" if name == cfg.web_image else "--build"
             con.print(f"[yellow]•[/yellow] image {name} missing (agentbox doctor {hint})")
     if gpus and not gpu_ok:
         con.print("[yellow]Docker cannot see the GPU.[/yellow] On Windows, update the NVIDIA driver and keep Docker Desktop on the WSL 2 backend.")
@@ -118,13 +129,14 @@ def run(ctx: typer.Context,
         gpu: int = typer.Option(0, help="number of GPUs"), vram: float = typer.Option(0.0, help="GB of VRAM per GPU"),
         net: str = typer.Option(None, help="none or bridge"), timeout: float = typer.Option(None),
         image: str = typer.Option(None), kind: str = typer.Option("cli"),
+        browser: bool = typer.Option(False, help="use the browser image (headless Chromium + Playwright)"),
         file: list[Path] = typer.Option([], help="copy a local file into /workspace")):
     """Run one command in a fresh sandbox:  agentbox run -- python -c "print(1)" """
     if not ctx.args:
         con.print("Give a command after --, e.g. agentbox run -- echo hi")
         raise typer.Exit(2)
     task = Task(cmd=shlex.join(ctx.args), size=size, cpus=cpus, mem_gb=mem, network=net, timeout=timeout, image=image, kind=kind,
-                gpu=GPURequest(count=gpu, vram_gb=vram) if gpu else None, files={p.name: p.read_bytes() for p in file})
+                gpu=GPURequest(count=gpu, vram_gb=vram) if gpu else None, browser=browser, files={p.name: p.read_bytes() for p in file})
 
     async def go() -> Result:
         async with AgentBox(client=_client()) as box:

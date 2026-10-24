@@ -93,7 +93,8 @@ class TaskSpec(BaseModel):
     vram_gb: float = Field(0.0, description="GB of VRAM per GPU this task expects to use; used to avoid overloading the GPU.")
     network: Literal["none", "bridge"] = Field("none", description="'bridge' gives internet access; only allowed if the operator enabled it.")
     timeout: float | None = Field(None, description="Seconds before the run is killed (default 600).")
-    image: str | None = Field(None, description="Docker image; defaults to agentbox/sandbox (Python 3.12, git, curl, build tools).")
+    browser: bool = Field(False, description="Use the browser image: headless Chromium with Python Playwright, plus Node.js, jq, wget, zip and sqlite3. Gets at least 1.5 GB of memory. Pair with network='bridge' to open real websites.")
+    image: str | None = Field(None, description="Docker image; defaults to agentbox/sandbox (Python 3.12, git, curl, build tools), or the browser image when browser is true.")
     kind: str = Field("mcp", description="Label grouping similar runs, used to learn how much CPU/memory they need.")
 
     def to_task(self, allow_network: bool) -> Task:
@@ -101,7 +102,7 @@ class TaskSpec(BaseModel):
             raise ToolError("network access is disabled; set allow_network = true in agentbox.toml to enable it")
         return Task(cmd=self.cmd, files=self.files, size=self.size, cpus=self.cpus, mem_gb=self.mem_gb,
                     gpu=GPURequest(count=self.gpu_count, vram_gb=self.vram_gb) if self.gpu_count else None,
-                    network=self.network, timeout=self.timeout, image=self.image, kind=self.kind)
+                    network=self.network, timeout=self.timeout, image=self.image, browser=self.browser, kind=self.kind)
 
 
 def _summary(r: Result) -> dict[str, Any]:
@@ -127,16 +128,18 @@ def _summary(r: Result) -> dict[str, Any]:
 async def run_task(cmd: str, files: dict[str, str] | None = None, size: Literal["small", "medium", "large"] | None = None,
                    cpus: float | None = None, mem_gb: float | None = None, gpu_count: int = 0, vram_gb: float = 0.0,
                    network: Literal["none", "bridge"] = "none", timeout: float | None = None,
-                   image: str | None = None, kind: str = "mcp") -> dict[str, Any]:
+                   image: str | None = None, browser: bool = False, kind: str = "mcp") -> dict[str, Any]:
     """Run one shell command in a fresh, isolated container and return its output.
 
     The container has a read-only root filesystem, no network by default, runs as a non-root user and is
     destroyed when the command ends. Write files to /workspace/out to keep them (see read_artifact).
+    Set browser=true for tasks that need a real browser: the image has Python Playwright with headless Chromium
+    (from playwright.sync_api import sync_playwright), Node.js and npm. Pair it with network="bridge" to reach websites.
     Status is one of: ok, failed (non-zero exit), timed_out, out_of_memory, stopped (killed from the monitor), error.
     """
     box = await _get_box()
     spec = TaskSpec(cmd=cmd, files=files or {}, size=size, cpus=cpus, mem_gb=mem_gb, gpu_count=gpu_count,
-                    vram_gb=vram_gb, network=network, timeout=timeout, image=image, kind=kind)
+                    vram_gb=vram_gb, network=network, timeout=timeout, image=image, browser=browser, kind=kind)
     return _summary(await box.run(spec.to_task(box.cfg.allow_network)))
 
 

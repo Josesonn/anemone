@@ -28,6 +28,8 @@ class Config(BaseModel):
     # containers
     image: str = "agentbox/sandbox:latest"
     gpu_image: str = "agentbox/sandbox-gpu:latest"
+    web_image: str = "agentbox/sandbox-web:latest"  # headless Chromium + Playwright, Node.js, jq, ...
+    browser_min_mem_gb: float = 1.5  # Chromium needs room; browser tasks never get less
     network: str = "none"
     allow_network: bool = False  # whether MCP clients may request internet access for a task
     user: str = "1000:1000"

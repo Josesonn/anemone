@@ -56,6 +56,7 @@ class Task(BaseModel):
     timeout: float | None = None
     priority: int = 0
     image: str | None = None
+    browser: bool = False  # use the browser image (headless Chromium + Playwright)
     env: dict[str, str] = Field(default_factory=dict)
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
 
