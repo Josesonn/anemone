@@ -24,6 +24,7 @@ const FLAG_MARK = 6;
 const FLAG_BAND = 7;
 const SUBSAMPLES = [0.25, 0.3, 0.75, 0.3, 0.25, 0.72, 0.75, 0.72];
 const BURST_LIFE = 1.6;
+const RIPPLE_LIFE = 1.5;
 
 function inTriangle(px, py, ax, ay, bx, by, cx, cy) {
   const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
@@ -78,6 +79,7 @@ export class AsciiRenderer {
     this.fishBuckets = FISH_ALPHAS.map(() => []);
     this.taggedCells = [];
     this.bursts = [];
+    this.ripples = [];
     this.setTheme(theme);
   }
 
@@ -198,6 +200,7 @@ export class AsciiRenderer {
     this.drawFish();
     this.drawBait(world, t);
     this.drawCreatures(t);
+    this.drawRipples(t);
     this.drawBursts(t);
     this.drawLabels(world);
   }
@@ -234,7 +237,9 @@ export class AsciiRenderer {
         this.bursts.push({ x: e.x, y: e.y, rgb: e.rgb, t0: world.time });
         this.stamp(this.energy, e.x, e.y, 5, 1.2);
       } else {
-        this.stamp(this.energy, e.x, e.y, 6, 1.4);
+        // A splash: a small glow where it landed, plus rings spreading out from it.
+        this.stamp(this.energy, e.x, e.y, 2, 0.8);
+        this.ripples.push({ x: e.x, y: e.y, t0: world.time });
       }
     }
     world.events.length = 0;
@@ -632,6 +637,32 @@ export class AsciiRenderer {
         const col = i % cols;
         const row = (i / cols) | 0;
         ctx.fillRect(Math.round(col * cw + cw * 0.66 - size / 2), Math.round(row * ch + ch * 0.64 - size / 2), size, size);
+      }
+    }
+  }
+
+  /** Two faint rings spreading out from where the water was touched, in the wake colour. */
+  drawRipples(t) {
+    const { ctx, cw, ch } = this;
+    this.ripples = this.ripples.filter((r) => t - r.t0 < RIPPLE_LIFE + 0.3);
+    const seen = new Set();
+    for (const r of this.ripples) {
+      for (const delay of [0, 0.3]) {
+        const k = (t - r.t0 - delay) / RIPPLE_LIFE;
+        if (k <= 0 || k >= 1) continue;
+        const radius = 10 + k * 120;
+        ctx.fillStyle = rgb(this.theme.wake, 0.9 * (1 - k) ** 1.2 * (delay ? 0.55 : 1));
+        const steps = Math.max(12, Math.round((radius * Math.PI * 2) / cw));
+        seen.clear();
+        for (let j = 0; j < steps; j++) {
+          const a = (j / steps) * Math.PI * 2;
+          const col = Math.round((r.x + Math.cos(a) * radius) / cw);
+          const row = Math.round((r.y + Math.sin(a) * radius * 0.7) / ch);
+          const key = col * 100003 + row;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          ctx.fillText(k < 0.7 ? "~" : "·", col * cw + cw / 2, row * ch + ch / 2 + 1);
+        }
       }
     }
   }
