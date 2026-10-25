@@ -1,18 +1,37 @@
-// The "goldfish" theme: the default look of the monitor.
-//
-// PLACEHOLDER: the goldfish visuals are not drawn yet. The scene, skin and prey settings
-// below work today; `shapes` holds one plain stand-in body so the monitor still renders.
-// TODO(goldfish): replace `shapes.placeholder` with the real goldfish shapes and update `tint`/`glyphs`.
+// The "clownfish" theme: the default look of the monitor.
 //
 // A theme decides everything you SEE; the engine decides how things MOVE.
 // To make your own: copy this file to themes/<name>.js, change it, then open
 // the monitor with ?theme=<name> (or pick it from the menu in the corner).
 // See docs/themes.md for a walkthrough of every field.
+import { smoothstep } from "../ocean/math.js";
+
+/** A stout oval body seen from above: round head, widest a third of the way back, then the tail stalk. */
+function clownBody(peak, waist, stalk) {
+  return (s) => {
+    if (s < 0.1) return (peak - 0.03) * Math.pow(Math.sin(((s / 0.1) * Math.PI) / 2), 0.55);
+    if (s < 0.32) return peak - 0.03 + 0.03 * smoothstep(0.1, 0.32, s);
+    if (s < waist) return stalk + (peak - stalk) * Math.pow(1 - (s - 0.32) / (waist - 0.32), 1.1);
+    const k = (s - waist) / (1 - waist);
+    return stalk * (1 - k) + 0.012;
+  };
+}
+
+/**
+ * White bands with black outlines. `bands` is a list of [from, to] along the body; `edge` is
+ * the outline thickness. Returns the two functions a shape needs: band() and marking().
+ */
+function stripes(bands, edge) {
+  return {
+    band: (s) => bands.some(([a, b]) => s > a && s < b),
+    marking: (s) => bands.some(([a, b]) => (s > a - edge && s <= a) || (s >= b && s < b + edge)),
+  };
+}
 
 export default {
-  name: "goldfish",
-  // Words the dashboard uses: "3 goldfish swimming", "queued fish", ...
-  words: { creature: "goldfish", creatures: "goldfish", prey: "fish", place: "ocean" },
+  name: "clownfish",
+  // Words the dashboard uses: "3 clownfish swimming", "queued fish", ...
+  words: { creature: "clownfish", creatures: "clownfish", prey: "fish", place: "reef" },
 
   // ── scene ───────────────────────────────────────────────────────────
   background: "#000",
@@ -21,6 +40,8 @@ export default {
   wake: [110, 230, 255],
   // Little prey glyphs: one character per fish, brightness by depth.
   prey: { glyph: "-", rgb: [230, 238, 255], queuedRgb: [255, 190, 70] },
+  // Food dropped by clicking the water in aquarium mode.
+  bait: { glyph: "*", rgb: [240, 190, 110] },
   // Where a fish is eaten.
   heat: { hot: [255, 120, 60], warm: [220, 40, 40], glyphs: ["·", "*"] },
   // Labels drawn next to each creature (task id).
@@ -37,8 +58,9 @@ export default {
     edgeLight: ".',`",
     mark: "#%@",
     eye: "o",
+    band: ".:-",
   },
-  eyeColor: "#9aa0ad",
+  eyeColor: "#f4f1ea",
   // Shimmer: how often skin cells flash an accent colour or white (0 = never, 1 = lots of
   // sparkle). Off by default: solid, calm skin.
   shimmer: 0,
@@ -47,17 +69,45 @@ export default {
   // ── creature shapes ─────────────────────────────────────────────────
   // Each task kind is drawn as one of these (picked by hashing the kind name).
   // All values are fractions of the creature's length; s runs 0 (head) → 1 (tail).
-  // See docs/themes.md for what every field means.
+  // `band(s, across)` paints white bands (drawn white whatever the tint); here the black
+  // outlines around them come from `marking`. The tail is a short rounded fan: `pelvic`
+  // reused as a wide fin at the stalk plus a small `caudal`.
   shapes: {
-    // TODO(goldfish): stand-in only, a plain tapered body. The fins are tiny triangles kept
-    // inside the outline so none show (all-zero fins would cover the whole bounding box).
-    placeholder: {
-      halfWidth: (s) => 0.08 * Math.sin(Math.PI * Math.min(1, s * 1.1)) + 0.004,
-      pectoral: [0.35, 0.45, 0.4, 0.01], falcate: false,
-      pelvic: [0.5, 0.6, 0.55, 0.01], caudal: 0,
-      dorsal: [0, 0], secondDorsal: [0, 0],
-      eye: [0.06, 0.1], gills: [0, 0],
-      tint: [1, 1, 1],
+    ocellaris: {
+      halfWidth: clownBody(0.17, 0.66, 0.04),
+      ...stripes([[0.13, 0.2], [0.37, 0.46], [0.63, 0.69]], 0.014),
+      pectoral: [0.17, 0.25, 0.32, 0.27], falcate: false,
+      pelvic: [0.64, 0.84, 0.97, 0.15], caudal: 0.1,
+      dorsal: [0.23, 0.35], secondDorsal: [0.49, 0.6],
+      eye: [0.05, 0.1], gills: [0, 0],
+      tint: [1.4, 0.58, 0.1], // bright orange
+    },
+    percula: {
+      halfWidth: clownBody(0.17, 0.66, 0.04),
+      ...stripes([[0.13, 0.21], [0.37, 0.47], [0.63, 0.69]], 0.03),
+      pectoral: [0.17, 0.25, 0.32, 0.27], falcate: false,
+      pelvic: [0.64, 0.84, 0.97, 0.15], caudal: 0.1,
+      dorsal: [0.24, 0.34], secondDorsal: [0.5, 0.6],
+      eye: [0.05, 0.1], gills: [0, 0],
+      tint: [1.45, 0.48, 0.08], // red-orange with thick black outlines
+    },
+    maroon: {
+      halfWidth: clownBody(0.185, 0.64, 0.045),
+      ...stripes([[0.14, 0.18], [0.39, 0.43], [0.62, 0.65]], 0.008),
+      pectoral: [0.17, 0.25, 0.32, 0.27], falcate: false,
+      pelvic: [0.62, 0.84, 0.97, 0.16], caudal: 0.1,
+      dorsal: [0.22, 0.36], secondDorsal: [0.46, 0.59],
+      eye: [0.05, 0.1], gills: [0, 0],
+      tint: [1.15, 0.3, 0.22], // deep maroon, thin white bands
+    },
+    tomato: {
+      halfWidth: clownBody(0.18, 0.65, 0.045),
+      ...stripes([[0.13, 0.19]], 0.016), // a single head band
+      pectoral: [0.17, 0.25, 0.32, 0.27], falcate: false,
+      pelvic: [0.63, 0.84, 0.97, 0.16], caudal: 0.1,
+      dorsal: [0.22, 0.58], secondDorsal: [0.6, 0.63],
+      eye: [0.05, 0.1], gills: [0, 0],
+      tint: [1.45, 0.38, 0.12], // tomato red
     },
   },
 

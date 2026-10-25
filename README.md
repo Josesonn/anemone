@@ -127,6 +127,7 @@ This opens a live dashboard at `http://127.0.0.1:7400` that only your computer c
 - **When a task ends,** its creature swims off in a burst: green for ok, red for failed, orange for a timeout, purple for out of memory.
 - **Hover over a creature** to see that task's CPU, memory and running time.
 - **Search the running tasks** by kind, ID or image, and **click one** to open its panel: live CPU and memory against the container's limits, a minute of history, the container's image, ID, processes, network and disk I/O and sandbox settings, plus **Pause/Resume** and **Hold to stop**. Stopped tasks end with the status `stopped`. Only the monitor page can use these controls; other websites can't.
+- **Aquarium** (button at the top, only while nothing is running) brings in a few named pet clownfish. Hover over one to meet it, and click the water to drop food for them. The mode closes by itself as soon as a task starts.
 - **Hide panels** (button at the top, or press **H**) slides the windows away so you can just watch the creatures.
 - **The side panel** shows running, queued, finished and failed counts, live CPU and memory gauges with a minute of history, what the running tasks have reserved, the running tasks, and an activity timeline. A notification pops up when a task fails.
 
@@ -134,7 +135,7 @@ The monitor is read-only. It reads what anemone publishes in `.anemone/` and nev
 
 The panel is built from [Arc](https://uiarc.dev) components (MIT). The monitor always animates, even if your system asks apps to reduce motion.
 
-**Different creatures.** The creatures' look lives in one file, `anemone/ui/static/themes/goldfish.js`. The goldfish visuals are still a placeholder (a plain stand-in body) until the real shapes are drawn. To swap them for something else, see [docs/themes.md](docs/themes.md).
+**Different creatures.** The creatures' look lives in one file, `anemone/ui/static/themes/clownfish.js`. To swap them for something else, see [docs/themes.md](docs/themes.md).
 
 **Changing the panel.** The panel source is in `frontend/` (React, Vite and Arc). Rebuilding it needs [Node.js](https://nodejs.org); using anemone doesn't.
 

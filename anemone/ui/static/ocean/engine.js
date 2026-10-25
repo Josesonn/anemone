@@ -29,6 +29,8 @@ export class OceanEngine {
     this.disposed = false;
     /** Set true to animate even when the OS asks for reduced motion. */
     this.ignoreReducedMotion = false;
+    /** What a click on the water does: "splash" scatters the prey, "bait" drops food for the creatures. */
+    this.tapMode = "splash";
 
     this.frame = this.frame.bind(this);
     this.onMotionPreference = this.onMotionPreference.bind(this);
@@ -155,7 +157,9 @@ export class OceanEngine {
 
   onPointerDown(e) {
     const { x, y, inside } = this.toLocal(e);
-    if (inside && !this.stillMode) this.world.splash(x, y);
+    if (!inside || this.stillMode) return;
+    if (this.tapMode === "bait") this.world.dropBait(x, y);
+    else this.world.splash(x, y);
   }
 
   onPointerLeave() {

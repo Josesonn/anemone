@@ -30,6 +30,17 @@ LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
 ACTIONS = {"pause", "resume", "stop"}
 
 
+class _Static(StaticFiles):
+    """Static files; the engine and themes are revalidated on every load so edits show up on reload.
+    The built app's file names carry a content hash, so those stay cacheable."""
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        if Path(full_path).parent != STATIC / "app":
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 class _Cached:
     """Run an expensive check at most every `ttl` seconds."""
 
@@ -249,7 +260,7 @@ def create_app(home: Path | None = None) -> Starlette:
         Route("/api/themes", api_themes),
         Route("/api/tasks/{task_id:str}", api_task),
         Route("/api/tasks/{task_id:str}/{action:str}", api_action, methods=["POST"]),
-        Mount("/static", StaticFiles(directory=STATIC), name="static"),
+        Mount("/static", _Static(directory=STATIC), name="static"),
     ]
     # Only answer requests addressed to this machine by name (blocks DNS-rebinding tricks).
     app = Starlette(routes=routes, middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)])

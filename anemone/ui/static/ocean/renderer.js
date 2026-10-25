@@ -21,6 +21,7 @@ const FLAG_FIN = 3;
 const FLAG_RIDGE = 4;
 const FLAG_EYE = 5;
 const FLAG_MARK = 6;
+const FLAG_BAND = 7;
 const SUBSAMPLES = [0.25, 0.3, 0.75, 0.3, 0.25, 0.72, 0.75, 0.72];
 const BURST_LIFE = 1.6;
 
@@ -195,6 +196,7 @@ export class AsciiRenderer {
     ctx.textBaseline = "middle";
     this.drawHeat();
     this.drawFish();
+    this.drawBait(world, t);
     this.drawCreatures(t);
     this.drawBursts(t);
     this.drawLabels(world);
@@ -334,12 +336,15 @@ export class AsciiRenderer {
       const facing = (bestNx * -0.6 + bestNy * -0.8) * across;
       let shade = 0.58 - across * across * 0.42 + facing * 0.26;
       let flag = FLAG_BODY;
-      if (s > shape.dorsal[0] && s < shape.dorsal[1] && across < 0.3) {
+      const inEye = shape.eye && s > shape.eye[0] && s < shape.eye[1] && across > 0.6;
+      if (!inEye && shape.band && shape.band(s, across)) {
+        flag = FLAG_BAND;
+      } else if (s > shape.dorsal[0] && s < shape.dorsal[1] && across < 0.3) {
         flag = FLAG_RIDGE;
         shade = 1;
       } else if (s > shape.secondDorsal[0] && s < shape.secondDorsal[1] && across < 0.4) {
         shade = Math.max(shade, 0.82);
-      } else if (shape.eye && s > shape.eye[0] && s < shape.eye[1] && across > 0.6) {
+      } else if (inEye) {
         flag = FLAG_EYE;
         shade = 0;
       } else if (s > shape.gills[0] && s < shape.gills[1] && across > 0.58) {
@@ -518,6 +523,10 @@ export class AsciiRenderer {
       } else if (flag === FLAG_MARK) {
         level = 24 + shade * 22;
         glyph = glyphs.mark[(key >>> 8) % glyphs.mark.length];
+      } else if (flag === FLAG_BAND) {
+        // White bands ignore the tint: shaded white, darker towards the edge of the body.
+        level = 150 + shade * 100;
+        glyph = glyphs.band ? glyphs.band[(key >>> 8) % glyphs.band.length] : glyphs.skin[0];
       } else if (flag === FLAG_FIN) {
         level = 40 + shade * 120;
         glyph = glyphs.fin[(key >>> 8) % glyphs.fin.length];
@@ -527,7 +536,10 @@ export class AsciiRenderer {
         glyph = glyphs.skin[clamp(Math.floor((1 - shade) * (glyphs.skin.length - 0.01)) + jitter, 0, glyphs.skin.length - 1)];
       }
       level *= dim;
-      ctx.fillStyle = `rgb(${Math.min(255, Math.round(level * tr))},${Math.min(255, Math.round(level * tg))},${Math.min(255, Math.round(level * tb + 4))})`;
+      ctx.fillStyle =
+        flag === FLAG_BAND
+          ? `rgb(${Math.round(level)},${Math.round(level)},${Math.min(255, Math.round(level + 6))})`
+          : `rgb(${Math.min(255, Math.round(level * tr))},${Math.min(255, Math.round(level * tg))},${Math.min(255, Math.round(level * tb + 4))})`;
       ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
 
       let color;
@@ -577,6 +589,19 @@ export class AsciiRenderer {
     if (taggedCells.length) {
       ctx.fillStyle = this.taggedStyle;
       for (const i of taggedCells) ctx.fillText(this.theme.prey.queuedGlyph ?? "=", (i % cols) * cw + cw / 2, ((i / cols) | 0) * ch + ch / 2 + 1);
+    }
+  }
+
+  /** Food pellets, twinkling slightly and fading out as they dissolve. */
+  drawBait(world, t) {
+    if (!world.bait.length) return;
+    const { ctx, cw, ch } = this;
+    const { glyph = "*", rgb: color = [240, 190, 110] } = this.theme.bait ?? {};
+    for (const b of world.bait) {
+      const age = t - b.born;
+      const alpha = clamp(Math.min(age * 4, (world.baitLife - age) / 4), 0, 1) * (0.8 + 0.2 * Math.sin(t * 6 + b.x));
+      ctx.fillStyle = rgb(color, alpha);
+      ctx.fillText(glyph, Math.floor(b.x / cw) * cw + cw / 2, Math.floor(b.y / ch) * ch + ch / 2 + 1);
     }
   }
 

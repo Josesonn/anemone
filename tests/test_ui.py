@@ -55,9 +55,9 @@ def test_page_static_and_themes(home):
     assert 'id="root"' in html
     bundle = next(p for p in html.split('"') if p.startswith("/static/app/") and p.endswith(".js"))
     for path in [bundle, "/static/ocean/engine.js", "/static/ocean/world.js", "/static/ocean/renderer.js",
-                 "/static/ocean/math.js", "/static/ocean/LICENSE", "/static/themes/goldfish.js"]:
+                 "/static/ocean/math.js", "/static/ocean/LICENSE", "/static/themes/clownfish.js"]:
         assert c.get(path).status_code == 200, path
-    assert "goldfish" in c.get("/api/themes").json()["themes"]
+    assert "clownfish" in c.get("/api/themes").json()["themes"]
 
 
 def test_other_hostnames_are_refused(home):
