@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, Eye, EyeOff, Play, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Clock3, Eye, EyeOff, Fish, Play, TriangleAlert } from "lucide-react";
 import { Alert } from "@/components/arc/alert/alert";
 import { Badge } from "@/components/arc/badge/badge";
 import { Button } from "@/components/arc/button/button";
@@ -18,8 +18,8 @@ import { OceanStage } from "@/components/OceanStage";
 import { TaskDrawer } from "@/components/TaskDrawer";
 import { formatBytes, formatSeconds, isActive, STATUS_TEXT, useMonitor } from "@/lib/monitor";
 import type { RunningTask, TaskEvent } from "@/lib/monitor";
-import { loadTheme } from "@/lib/ocean";
-import type { Engine, Theme } from "@/lib/ocean";
+import { loadTheme, makePets } from "@/lib/ocean";
+import type { Engine, Pet, Theme } from "@/lib/ocean";
 
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const TABLE_ROWS = 5;
@@ -65,10 +65,12 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [reserved, setReserved] = useState("load");
   const [hidden, setHidden] = useState(() => store.get("anemone.panelsHidden") === "1");
+  // Aquarium mode: pets to feed while nothing is running. null = off.
+  const [pets, setPets] = useState<Pet[] | null>(null);
   const seen = useRef<Set<string> | null>(null);
 
-  // Goldfish by default. A different creature file in /static/themes can be tried with ?theme=<name>.
-  useEffect(() => { loadTheme(new URLSearchParams(location.search).get("theme") ?? "goldfish").then(setTheme); }, []);
+  // Clownfish by default. A different creature file in /static/themes can be tried with ?theme=<name>.
+  useEffect(() => { loadTheme(new URLSearchParams(location.search).get("theme") ?? "clownfish").then(setTheme); }, []);
 
   const togglePanels = useCallback(() => setHidden(h => { store.set("anemone.panelsHidden", h ? "0" : "1"); return !h; }), []);
   useEffect(() => {
@@ -93,6 +95,11 @@ export default function App() {
   const shownRows = matches.slice(0, TABLE_ROWS);
   const openId = selected[0] ?? null;
   const openTask = openId ? running.find(t => t.id === openId) ?? null : null;
+  const busy = running.length > 0 || (st?.queued ?? 0) > 0;
+
+  // The aquarium is only for quiet times: real work sends the pets away (and closes the mode).
+  if (busy && pets) setPets(null);
+  const toggleAquarium = useCallback(() => setPets(p => (p || !theme ? null : makePets(theme))), [theme]);
 
   // A toast for every task that ends badly, not for the backlog already there when the page opened.
   useEffect(() => {
@@ -127,10 +134,17 @@ export default function App() {
 
   return (
     <div className={hidden ? "app panels-hidden" : "app"}>
-      <OceanStage state={state} connected={connected} theme={theme} selectedId={selected[0] ?? null} onEngine={onEngine} />
+      <OceanStage state={state} connected={connected} theme={theme} selectedId={selected[0] ?? null} pets={pets} onEngine={onEngine} />
 
       <div className="toolbar">
         {problem && <Badge tone="danger" size="sm">{problem}</Badge>}
+        {pets && <Badge size="sm">Click the water to drop food</Badge>}
+        {!busy && theme && (
+          <Button size="sm" variant="secondary" onClick={toggleAquarium} aria-pressed={!!pets} title="Feed some pets while nothing is running">
+            <Fish size={14} />
+            {pets ? "Leave aquarium" : "Aquarium"}
+          </Button>
+        )}
         <Button size="sm" variant="secondary" onClick={togglePanels} aria-pressed={hidden} title="Show or hide the panels (H)">
           {hidden ? <Eye size={14} /> : <EyeOff size={14} />}
           {hidden ? "Show panels" : "Hide panels"}

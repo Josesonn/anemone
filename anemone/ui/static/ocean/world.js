@@ -23,6 +23,9 @@ const FISH_ALIGN_K = 1.4;
 const FISH_COHESION_K = 1;
 const FISH_FLEE_K = 1100;
 const BLIND_COS = -0.6; // ~127° either side of the heading is visible
+const BAIT_MAX = 60;
+const BAIT_LIFE = 30; // seconds before an uneaten pellet dissolves
+const BAIT_SINK = 9; // px/s
 
 export class World {
   constructor(theme, { fishCount } = {}) {
@@ -31,6 +34,8 @@ export class World {
     this.time = 0;
     this.fish = [];
     this.creatures = [];
+    this.bait = [];
+    this.baitLife = BAIT_LIFE;
     this.events = [];
     this.pointer = { x: 0, y: 0, active: false };
     this.queued = 0;
@@ -232,10 +237,45 @@ export class World {
     }
   }
 
+  /** Drop a pinch of food at (x, y): a few pellets that sink slowly until eaten or gone. */
+  dropBait(x, y) {
+    this.events.push({ kind: "splash", x, y });
+    for (let i = 0; i < 5; i++) {
+      this.bait.push({ x: x + rand(-16, 16), y: y + rand(-10, 10), vx: rand(-10, 10), vy: rand(2, 8), born: this.time, alive: true });
+    }
+    if (this.bait.length > BAIT_MAX) this.bait.splice(0, this.bait.length - BAIT_MAX);
+  }
+
+  stepBait(dt) {
+    const drag = Math.exp(-dt * 1.5);
+    for (const b of this.bait) {
+      b.vx *= drag;
+      b.vy += (BAIT_SINK - b.vy) * Math.min(1, dt * 0.8);
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (this.time - b.born > this.baitLife || b.y > this.height + 10) b.alive = false;
+    }
+    this.bait = this.bait.filter((b) => b.alive);
+  }
+
+  nearestBait(x, y) {
+    let best = null;
+    let bestD = Infinity;
+    for (const b of this.bait) {
+      const d = (b.x - x) ** 2 + (b.y - y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = b;
+      }
+    }
+    return best;
+  }
+
   step(dt) {
     this.time += dt;
     this.rebuildHash();
     this.stepFish(dt);
+    this.stepBait(dt);
     this.stepCreatures(dt);
     this.respawn();
     this.tagQueued();
@@ -463,8 +503,19 @@ export class World {
       dy += Math.sin(sh.heading + sh.wander) * 0.45;
 
       let hunting = false;
+      let feeding = false;
       let closing = 0;
-      if (sh.leaving) {
+      const food = sh.leaving ? null : this.nearestBait(hx, hy);
+      if (food) {
+        // Food beats prey: head straight for the nearest pellet.
+        const tx = food.x - hx;
+        const ty = food.y - hy;
+        const d = Math.hypot(tx, ty) || 1;
+        dx += (tx / d) * 4;
+        dy += (ty / d) * 4;
+        feeding = true;
+        closing = clamp(1 - d / (L * 0.9), 0, 1);
+      } else if (sh.leaving) {
         // Done: swim straight off the nearest edge.
         const ex = hx < cxW ? -1 : 1;
         const ey = hy < cyW ? -1 : 1;
@@ -528,14 +579,15 @@ export class World {
       }
 
       const desired = Math.atan2(dy, dx);
-      const agility = Math.min(hunting ? 1.7 + closing : sh.leaving ? 1.4 : 0.8, sh.speed / (L * 0.22));
+      const agility = Math.min(feeding ? 2.4 + closing : hunting ? 1.7 + closing : sh.leaving ? 1.4 : 0.8, sh.speed / (L * 0.22));
       const maxTurn = agility * dt;
       const turned = clamp(angleDiff(sh.heading, desired), -maxTurn, maxTurn);
       sh.heading += turned;
       sh.turn += (turned / dt - sh.turn) * Math.min(1, dt * 3);
 
       const cruise = (30 + L * 0.04) * (0.7 + 0.5 * drive);
-      const targetSpeed = sh.leaving ? cruise * 1.8 : hunting ? cruise * (1.45 + closing * 1.5) : cruise;
+      // Slow down near food so the turn is tight enough to reach it instead of circling.
+      const targetSpeed = sh.leaving ? cruise * 1.8 : feeding ? cruise * (1.6 - closing * 0.9) : hunting ? cruise * (1.45 + closing * 1.5) : cruise;
       sh.speed += (targetSpeed - sh.speed) * Math.min(1, dt * 1.1);
       sh.phase += dt * (2 + sh.speed / 24);
 
@@ -554,6 +606,17 @@ export class World {
         nodes[k * 2] = px + Math.cos(angle) * seg;
         nodes[k * 2 + 1] = py + Math.sin(angle) * seg;
         prevAngle = angle;
+      }
+
+      if (feeding) {
+        const mouthR = L * 0.06 + 10;
+        for (const b of this.bait) {
+          if (b.alive && (b.x - nodes[0]) ** 2 + (b.y - nodes[1]) ** 2 < mouthR * mouthR) {
+            b.alive = false;
+            sh.eaten = (sh.eaten ?? 0) + 1;
+            this.events.push({ kind: "eat", x: b.x, y: b.y });
+          }
+        }
       }
 
       if (!sh.leaving && sh.hunger > 0.15) {

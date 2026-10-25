@@ -5,7 +5,7 @@ The monitor's ocean is split into two halves:
 - **The engine** (`anemone/ui/static/ocean/`) decides how things *move*: creatures hunting, prey schooling, ripples spreading. You never need to edit it.
 - **A theme** (`anemone/ui/static/themes/<name>.js`) decides how everything *looks*: creature shapes, prey characters, colours, the words in the panels, and how the prey schools.
 
-So turning goldfish into dragons, birds or spaceships means writing a theme. You don't have to touch the engine.
+So turning clownfish into dragons, birds or spaceships means writing a theme. You don't have to touch the engine.
 
 ## The quick workflow
 
@@ -16,19 +16,19 @@ So turning goldfish into dragons, birds or spaceships means writing a theme. You
    ```bash
    anemone batch examples/stress.yaml
    ```
-2. **Copy the theme.** `goldfish.js` is the default theme. Its scene, skin and prey settings are complete; its `shapes` hold a single placeholder body until the goldfish shapes are drawn, so use the field reference below to write your own.
+2. **Copy the theme.** `clownfish.js` is the full example, with every shape written out.
 3. **Rename it.** Save the copy as `themes/dragons.js`, then change `name: "dragons"` inside it.
-4. **Open it:** `http://127.0.0.1:7400/?theme=dragons`. Without `?theme=`, the monitor shows `goldfish`.
-5. **Edit, save, reload, repeat.** If the page shows nothing, press F12 and check the **Console** tab for a typo. A theme that fails to load falls back to `goldfish` and logs why.
+4. **Open it:** `http://127.0.0.1:7400/?theme=dragons`. Without `?theme=`, the monitor shows `clownfish`.
+5. **Edit, save, reload, repeat.** If the page shows nothing, press F12 and check the **Console** tab for a typo. A theme that fails to load falls back to `clownfish` and logs why.
 
 ## What's in a theme
 
-A theme is a JavaScript file that exports one object. The examples below use the fields from `goldfish.js`.
+A theme is a JavaScript file that exports one object. The examples below use the fields from `clownfish.js`.
 
 ### Words
 
 ```js
-words: { creature: "goldfish", creatures: "goldfish", prey: "fish", place: "ocean" },
+words: { creature: "clownfish", creatures: "clownfish", prey: "fish", place: "reef" },
 ```
 
 These are used in the monitor's text, for example "The ocean is quiet". For dragons you might write `{ creature: "dragon", creatures: "dragons", prey: "ember", place: "sky" }`.
@@ -44,6 +44,7 @@ These are used in the monitor's text, for example "The ocean is quiet". For drag
 | `prey.rgb` | Prey colour |
 | `prey.queuedRgb` / `prey.queuedGlyph` | Prey that stand for **queued tasks** |
 | `heat` | The flash where a prey gets eaten: `hot`, `warm` and two `glyphs` |
+| `bait` | Food dropped in aquarium mode: a `glyph` and an `rgb` colour |
 | `label.rgb` | The task label floating above each creature |
 | `font` | A monospace font. Every character has to be the same width |
 
@@ -88,6 +89,7 @@ s = 0 (head)                                   s = 1 (tail)
 | `tint: [r, g, b]` | Skin colour multipliers. `[1, 1, 1]` is grey; `[1.2, 0.8, 0.6]` is warm orange |
 | `marking(s, v, L, across, id)` | Optional. Return `true` to paint a dark marking at that point, for spots or stripes. `across` runs from 0 at the centre line to 1 at the edge |
 | `ridges(s, across)` | Optional. Return `true` for pale stripes |
+| `band(s, across)` | Optional. Return `true` to paint the skin white whatever the `tint`, like a clownfish's bands. `glyphs.band` sets their characters |
 
 **A dragon, for example:**
 
@@ -133,8 +135,8 @@ Each entry is a kind of school:
 You don't have to copy everything. Spread an existing theme and override only what you change:
 
 ```js
-import goldfish from "./goldfish.js";
-export default { ...goldfish, name: "sunset", background: "#120404", wake: [255, 140, 60] };
+import clownfish from "./clownfish.js";
+export default { ...clownfish, name: "sunset", background: "#120404", wake: [255, 140, 60] };
 ```
 
 ## Debugging in the browser
